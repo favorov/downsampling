@@ -4,5 +4,7 @@ chromosome_name=chr1_gl000192_random
 nucleotides_per_snv=1000
 read_length=100
 read_coverage=100
+mutations=mutations.test
+reads=reads.test
 random_seed_1=12483
 random_seed_2=1436111
