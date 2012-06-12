@@ -1,4 +1,4 @@
-//$Id: Random.h 1014 2009-03-01 16:50:36Z favorov $
+//$Id$
 //The name "ultra is for the memory of fsultra library - the base of this code
 //
 //Changes: the initilizer has got two lines 

@@ -1,7 +1,7 @@
 /***************************************************************\
   APSampler. Looking for complex genetic interaction patterns
  by a Metropolis-Hastings MCMC project. (c) A. Favorov 1999-2010
-    $Id: confread.c 1373 2010-12-20 11:23:26Z favorov $
+    $Id$
 \***************************************************************/
 
 #include <assert.h>

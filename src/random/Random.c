@@ -1,4 +1,4 @@
-//$Id: Random.c 1014 2009-03-01 16:50:36Z favorov $
+//$Id$
 //
 #include <math.h>
 
