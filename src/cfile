@@ -1,6 +1,6 @@
 #fasta_file=chr9.fa
-fasta_file=chr1_gl000192_random.fa
-chromosome_name=chr1_gl000192_random
+fasta_file=chr9.fa
+chromosome_name=chr9
 nucleotides_per_snv=1000
 read_length=100
 read_coverage=100

@@ -62,6 +62,7 @@ int main(int argc, char ** argv)
 		cout<<"Reading fasta..."<<flush;
 
 		ifstream fasta_stream(config.fasta_file.c_str());
+		if (!fasta_stream.good()) {throw * new IOStreamException("Cannot open fasta file for read.\n");}
 		fasta_stream>>sp;
 		fasta_stream.close();
 
@@ -138,18 +139,22 @@ int main(int argc, char ** argv)
 		{
 			while( upper_mut<mumus.end() && upper_mut->pos<(*read)+config.read_length) upper_mut++; 
 			//it is the end() of the read's range mutations 
-			if (lower_mut==mumus.end() && mumus.begin()->pos < (*read)+config.read_length) lower_mut=mumus.begin();
-			//init lower_mut when it is below the end of any (first potentially mutated) read
-			while( lower_mut->pos<*read) lower_mut++; //it is the first mutation in the read's range
+			if (lower_mut==mumus.end())
+			{
+				if (mumus.begin()->pos < (*read)+config.read_length) lower_mut=mumus.begin();
+				//init lower_mut when it is below the end of any (first potentially mutated) read
+			}
+			else while( lower_mut->pos < *read ) lower_mut++; 
+			//it is the first mutation in the read's range
 			vector<ushort> read_seq;
 			vector<ushort>::iterator read_segment=sp[0].begin()+(*read);
 			copy(read_segment,read_segment+config.read_length,back_inserter(read_seq));
-			rstream<<config.chromosome_name<<":"<<*read;
+			rstream<<">"<<config.chromosome_name<<":"<<*read;
 			ushort copy_id=(int)(floorf(uni()*2))+1; //1 or 2
 			rstream<<":"<<copy_id;
 			if (lower_mut<upper_mut) rstream<<"#";
 			copy(lower_mut,upper_mut,ostream_iterator<mutation>(rstream,"#"));
-			rstream<<">"<<endl;
+			rstream<<endl;
 			for(vector<mutation>::iterator mut=lower_mut;mut<upper_mut;mut++)
 				if (mut->copy==copy_id) apply(*mut,read_seq,*read,copy_id);
 			Atgc::ushortv2string(read_seq,conv_string);
