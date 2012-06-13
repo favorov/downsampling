@@ -129,22 +129,34 @@ int main(int argc, char ** argv)
 
 		cout<<"Sequencing ("<<reads_number<<" reads) ..."<<flush;
 		
-		unsigned int reads_counter=0;
+		unsigned long reads_counter=0;
 
 		vector<mutation>::iterator lower_mut=mumus.end();
 		vector<mutation>::iterator upper_mut=mumus.begin();
 		ofstream rstream(config.reads_file.c_str());
 		string conv_string(config.read_length,'n');
+		bool initialized=false;
 		for (vector<size_t>::iterator read=reads.begin();read<reads.end();read++)
 		{
+			
 			while( upper_mut<mumus.end() && upper_mut->pos<(*read)+config.read_length) upper_mut++; 
 			//it is the end() of the read's range mutations 
-			if (lower_mut==mumus.end())
+			if (!initialized)//lower_mut==mumus.end()
 			{
-				if (mumus.begin()->pos < (*read)+config.read_length) lower_mut=mumus.begin();
+				if (mumus.begin()->pos < (*read)+config.read_length) 
+				{
+					lower_mut=mumus.begin();
+					initialized=true;
+				}
 				//init lower_mut when it is below the end of any (first potentially mutated) read
 			}
-			else while( lower_mut->pos < *read ) lower_mut++; 
+			else 
+				while
+					( 
+						lower_mut < mumus.end() 
+						&& 
+						lower_mut->pos < *read 
+					) lower_mut++; 
 			//it is the first mutation in the read's range
 			vector<ushort> read_seq;
 			vector<ushort>::iterator read_segment=sp[0].begin()+(*read);
