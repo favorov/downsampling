@@ -15,10 +15,14 @@ $Id$
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <boost/iostreams/filtering_streambuf.hpp>
+//#include <boost/iostreams/copy.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
 
 #include "Sequences.hpp"
 #include "mutation.hpp"
 #include "cov_mut_config.hpp"
+//#include "open_gzip_or_not_gzip.hpp"
 
 extern "C"
 {
@@ -59,14 +63,31 @@ int main(int argc, char ** argv)
 
 		SequencesPile sp;
 
-		cout<<"Reading fasta..."<<flush;
+		//istream & fasta_stream=open_gzip_or_not_gzip(config.fasta_file);
+		if (!config.fasta_file.substr(config.fasta_file.length()-2,2).compare("gz"))
+		{
+			cout<<"Opening gzipped fasta..."<<flush;
+			ifstream fastagzfile(config.fasta_file.c_str(), ios_base::in | ios_base::binary);
+			if (!fastagzfile.good()) {throw * new IOStreamException("Cannot open gzipped fasta file for read.\n");}
+			boost::iostreams::filtering_streambuf<boost::iostreams::input> in;
+			in.push(boost::iostreams::gzip_decompressor());
+			in.push(fastagzfile);
+			istream fasta_stream(&in);
+			cout<<" Reading gzipped fasta..."<<flush;
+			fasta_stream>>sp;
+			fastagzfile.close();
+		}
+		else
+		{
+			cout<<"Opening fasta..."<<flush;
+			ifstream fasta_stream(config.fasta_file.c_str());
+			if (!fasta_stream.good()) {throw * new IOStreamException("Cannot open fasta file for read.\n");}
+			cout<<" Reading fasta..."<<flush;
+			fasta_stream>>sp;
+			fasta_stream.close();
+		}
 
-		ifstream fasta_stream(config.fasta_file.c_str());
-		if (!fasta_stream.good()) {throw * new IOStreamException("Cannot open fasta file for read.\n");}
-		fasta_stream>>sp;
-		fasta_stream.close();
-
-		cout<<" done\n"<<flush;
+		cout<<" done.\n"<<flush;
 
 		size_t lower_pos=0,upper_pos=sp[0].size()-1;
 		//lower and upper non-N position in the sequence

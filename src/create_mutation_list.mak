@@ -20,6 +20,10 @@ includeflags = $(foreach dir,$(subst :,$(space),$(srcdirlist)),$(INCLUDEKEY)$(di
 #this strange invocation is just preparing -I flag from srcdirlist.
 
 include ~/include/ccvars
+include ~/include/boostdirs
+
+CPPFLAGS:=$(CPPFLAGS) -I $(boost_include)
+LINKFLAGS:=$(LINKFLAGS) -L $(boost_lib) -lboost_iostreams
 
 .PHONY: all objs clean
 
@@ -27,7 +31,6 @@ vpath %.c $(srcdirlist)
 vpath %.cpp $(srcdirlist)
 vpath %.h $(srcdirlist)
 vpath %.hpp $(srcdirlist)
-
 
 
 all: $(exename)$(EXEEXT) 
@@ -51,7 +54,7 @@ $(exename)$(EXEEXT): $(OBJS)
 	$(CPP) -o $(exename)$(EXEEXT) $(OBJS) $(LINKFLAGS)
 	chmod 755 $(exename)$(EXEEXT) 
 
-$(od)/$(name).o: $(name).cpp mutation.hpp Exception.hpp Sequences.hpp Atgc.hpp Random.h cov_mut_config.hpp
+$(od)/$(name).o: $(name).cpp mutation.hpp Exception.hpp Sequences.hpp Atgc.hpp Random.h cov_mut_config.hpp open_gzip_or_not_gzip.hpp
 $(od)/Random.o: Random.c Random.h
 $(od)/Sequences.o: Sequences.cpp Sequences.hpp Exception.hpp Atgc.hpp Random.h 
 $(od)/confread.o: confread.c confread.h
