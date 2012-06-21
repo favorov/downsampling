@@ -10,7 +10,6 @@ dd=./dna
 cd=./control
 ud=./random
 od=./obj
-id=./io
 
 srcdirlist=$(dd):$(ud):$(cd):$(td):$(id)
 
@@ -54,7 +53,7 @@ $(exename)$(EXEEXT): $(OBJS)
 	$(CPP) -o $(exename)$(EXEEXT) $(OBJS) $(LINKFLAGS)
 	chmod 755 $(exename)$(EXEEXT) 
 
-$(od)/$(name).o: $(name).cpp mutation.hpp Exception.hpp Sequences.hpp Atgc.hpp Random.h cov_mut_config.hpp open_gzip_or_not_gzip.hpp
+$(od)/$(name).o: $(name).cpp mutation.hpp Exception.hpp Sequences.hpp Atgc.hpp Random.h cov_mut_config.hpp
 $(od)/Random.o: Random.c Random.h
 $(od)/Sequences.o: Sequences.cpp Sequences.hpp Exception.hpp Atgc.hpp Random.h 
 $(od)/confread.o: confread.c confread.h
