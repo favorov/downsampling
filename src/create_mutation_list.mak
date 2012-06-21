@@ -10,8 +10,9 @@ dd=./dna
 cd=./control
 ud=./random
 od=./obj
+id=./io
 
-srcdirlist=$(dd):$(ud):$(cd):$(td)
+srcdirlist=$(dd):$(ud):$(cd):$(td):$(id)
 
 empty=
 space=$(empty) $(empty)
