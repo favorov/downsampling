@@ -1,8 +1,7 @@
 #****************************************************************************#
-#SeSiMCMC. Looking - for - motifs by MCMC project. (c) A. Favorov 2001
-#$Id: Makefile 1332 2010-11-20 02:13:48Z favorov $
+# mutation-call-by-coverage
+#$Id: create_mutation_list.mak 1749 2012-06-21 08:02:39Z favorov $
 #****************************************************************************#
-#this file can be started only from parent directory
 
 
 .PHONY:	all objs clean 
