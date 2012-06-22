@@ -2,6 +2,21 @@
 mutation-call-by-coverage
 $Id$
 \****************************************************************************/
+#include <iostream>
+#include <iomanip>
+#include <sstream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <algorithm>
+
+#include <boost/random/ranlux.hpp>
+#include <boost/random/uniform_int_distribution.hpp>
+#include <boost/random/seed_seq.hpp>
+
+#include <boost/iostreams/filtering_streambuf.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -15,24 +30,23 @@ $Id$
 #include <string>
 #include <vector>
 #include <algorithm>
-#include <boost/iostreams/filtering_streambuf.hpp>
-//#include <boost/iostreams/copy.hpp>
-#include <boost/iostreams/filter/gzip.hpp>
+
 
 #include "Sequences.hpp"
 #include "mutation.hpp"
 #include "cov_mut_config.hpp"
-//#include "open_gzip_or_not_gzip.hpp"
 
 extern "C"
 {
-	#include "Random.h"
 	#include "confread.h"
 }
 
 #define MUT_LIST_POSTFIX "mutation-list"
 #define READS_POSTFIX "reads" 
 #define ADD_MUT_INFO true
+
+boost::random::ranlux64_4 gen;
+//generator is to be the only
 
 using namespace std;
 
@@ -59,7 +73,11 @@ int main(int argc, char ** argv)
 
 		cout<<config;
 		
-		rinit(config.random_seed_1,config.random_seed_2);
+		std::vector<unsigned long> iniseed(2);
+		iniseed[0]=config.random_seed_1;
+		iniseed[1]=config.random_seed_2;
+		boost::random::seed_seq iniseedseq(iniseed);
+		gen.seed(iniseedseq);
 
 		SequencesPile sp;
 
@@ -103,11 +121,11 @@ int main(int argc, char ** argv)
 		mutation just_a_mut;
 
 		cout<<"Preparing mutations ..."<<flush;
+    boost::random::uniform_int_distribution<unsigned int> dist_mut_prob(0,config.nucleotides_per_snv-1);
 		for (size_t pos=lower_pos;pos<=upper_pos;pos++)
 		{
-			unsigned int draw=(int)(floorf(uni()*config.nucleotides_per_snv)); //0..nucleotides_per_snv-1
 			//copy 1
-			if (draw==0)
+			if (dist_mut_prob(gen)==0)
 			{
 				mumus.push_back(just_a_mut);
 				mumus.back().chr=config.chromosome_name;
@@ -116,9 +134,8 @@ int main(int argc, char ** argv)
 				mumus.back().copy=1;
 				mumus.back().mutate();
 			}
-			draw=(int)(floorf(uni()*config.nucleotides_per_snv)); //0..nucleotides_per_snv-1
 			//copy 2
-			if (draw==0)
+			if (dist_mut_prob(gen)==0)
 			{
 				mumus.push_back(just_a_mut);
 				mumus.back().chr=config.chromosome_name;
@@ -141,8 +158,10 @@ int main(int argc, char ** argv)
 
 		vector<size_t> reads(reads_number);
 
+    boost::random::uniform_int_distribution<size_t> random_read_start(lower_pos,upper_pos-config.read_length);
+
 		for (vector<size_t>::iterator read=reads.begin();read<reads.end();read++)
-			*read=lower_pos+(int)(floorf(uni()*(upper_pos-config.read_length+1-lower_pos)));
+			*read=random_read_start(gen);
 
 		sort(reads.begin(),reads.end());
 		
@@ -183,7 +202,8 @@ int main(int argc, char ** argv)
 			vector<ushort>::iterator read_segment=sp[0].begin()+(*read);
 			copy(read_segment,read_segment+config.read_length,back_inserter(read_seq));
 			rstream<<">"<<config.chromosome_name<<":"<<*read;
-			ushort copy_id=(int)(floorf(uni()*2))+1; //1 or 2
+			boost::random::uniform_int_distribution<int> random_copy(1,2);
+			ushort copy_id=random_copy(gen); //1 or 2
 			rstream<<":"<<copy_id;
 			if (lower_mut<upper_mut) rstream<<"#";
 			copy(lower_mut,upper_mut,ostream_iterator<mutation>(rstream,"#"));
@@ -213,4 +233,3 @@ int main(int argc, char ** argv)
 
 	return 0;
 }
-

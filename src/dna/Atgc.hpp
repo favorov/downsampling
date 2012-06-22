@@ -21,10 +21,6 @@ using namespace std;
 
 #include "Exception.hpp"
 
-extern "C"
-{
-	#include "Random.h"
-}
 //Here, we define unsigned short <-> atgc letter functions and
 //procedure to output unsigned short * array faragment as 
 //atgc sequence fragment.

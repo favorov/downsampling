@@ -13,6 +13,9 @@ $Id$
 #include <sstream>
 #include <iomanip>
 #include <math.h>
+#include <boost/random/ranlux.hpp>
+#include <boost/random/seed_seq.hpp>
+#include <boost/random/uniform_int_distribution.hpp>
 
 #include "Exception.hpp"
 #include "Atgc.hpp"
@@ -22,11 +25,9 @@ $Id$
 
 #define usort unsigned short
 
-extern "C"
-{
-	#include "Random.h"
-}
 //we suppose that the random generator is already seede
+extern boost::random::ranlux64_4 gen;
+
 
 struct mutation{
 	mutation():chr(""),copy(0),pos(0),wild(0),mutated(0){};
@@ -47,11 +48,13 @@ struct mutation{
 	unsigned short mutated;
 	void choose_copy()
 	{
-		copy=(int)(floorf(2.*uni()))+1; //1,2
+    boost::random::uniform_int_distribution<unsigned short> random_copy(1,2);
+		copy=random_copy(gen); //1,2
 	}
 	void mutate()
 	{
-		unsigned int delta=(int)(floorf(3.*uni()))+1; //1,2,3
+    boost::random::uniform_int_distribution<unsigned int> random_delta(1,3);
+		unsigned int delta=random_delta(gen); //1,2,3
 		mutated=1+(wild+delta-1)%4;
 	}
 	bool operator< (const mutation &mu) const
