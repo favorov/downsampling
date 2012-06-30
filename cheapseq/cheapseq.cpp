@@ -2,6 +2,12 @@
 mutation-call-by-coverage
 $Id$
 \****************************************************************************/
+
+#include <math.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
 #include <iostream>
 #include <iomanip>
 #include <sstream>
@@ -17,24 +23,9 @@ $Id$
 #include <boost/iostreams/filtering_streambuf.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 
-#include <math.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-
-
-#include <iostream>
-#include <iomanip>
-#include <sstream>
-#include <fstream>
-#include <string>
-#include <vector>
-#include <algorithm>
-
-
 #include "Sequences.hpp"
 #include "mutation.hpp"
-#include "cov_mut_config.hpp"
+#include "cheapseq_config.hpp"
 
 extern "C"
 {
@@ -81,7 +72,6 @@ int main(int argc, char ** argv)
 
 		SequencesPile sp;
 
-		//istream & fasta_stream=open_gzip_or_not_gzip(config.fasta_file);
 		if (!config.fasta_file.substr(config.fasta_file.length()-2,2).compare("gz"))
 		{
 			cout<<"Opening gzipped fasta..."<<flush;
@@ -201,17 +191,18 @@ int main(int argc, char ** argv)
 			vector<ushort> read_seq;
 			vector<ushort>::iterator read_segment=sp[0].begin()+(*read);
 			copy(read_segment,read_segment+config.read_length,back_inserter(read_seq));
-			rstream<<">"<<config.chromosome_name<<":"<<*read;
+			rstream<<">read"<<reads_counter<<":"<<config.chromosome_name<<":"<<*read;
 			boost::random::uniform_int_distribution<int> random_copy(1,2);
 			ushort copy_id=random_copy(gen); //1 or 2
 			rstream<<":"<<copy_id;
-			if (lower_mut<upper_mut) rstream<<"#";
-			copy(lower_mut,upper_mut,ostream_iterator<mutation>(rstream,"#"));
-			rstream<<endl;
 			for(vector<mutation>::iterator mut=lower_mut;mut<upper_mut;mut++)
-				if (mut->copy==copy_id) apply(*mut,read_seq,*read,copy_id);
+				if (mut->copy==copy_id) 
+				{	
+					apply(*mut,read_seq,*read,copy_id);
+					rstream<<"#"<<*mut;
+				}
+			rstream<<endl;
 			Atgc::ushortv2string(read_seq,conv_string);
-			//copy(read_seq.begin(),read_seq.end(),ostream_iterator<ushort>(rstream,""));
 			rstream<<conv_string<<endl;
 			reads_counter++;
 			if (!(reads_counter % 100000)) 

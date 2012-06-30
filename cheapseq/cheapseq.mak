@@ -51,7 +51,7 @@ $(exename)$(EXEEXT): $(OBJS)
 	$(CPP) -o $(exename)$(EXEEXT) $(OBJS) $(LINKFLAGS)
 	chmod 755 $(exename)$(EXEEXT) 
 
-$(od)/$(name).o: $(name).cpp mutation.hpp Exception.hpp Sequences.hpp Atgc.hpp cov_mut_config.hpp
+$(od)/$(name).o: $(name).cpp mutation.hpp Exception.hpp Sequences.hpp Atgc.hpp $(name)_config.hpp
 $(od)/Sequences.o: Sequences.cpp Sequences.hpp Exception.hpp Atgc.hpp 
 $(od)/confread.o: confread.c confread.h
 
