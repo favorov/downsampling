@@ -2,7 +2,7 @@
 # mutation-call-by-coverage
 #$Id$
 #****************************************************************************#
-name=create_mutation_list
+name=cheapseq
 exename=$(name)
 
 td=.

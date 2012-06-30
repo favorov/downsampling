@@ -8,12 +8,12 @@
 
 all:
 	@if [ ! -d ./obj ]; then mkdir ./obj && echo "Creating ./obj...";fi
-	$(MAKE) -f create_mutation_list.mak 
+	$(MAKE) -f cheapseq.mak 
 
 clean:
-	$(MAKE) -f create_mutation_list.mak clean
+	$(MAKE) -f chepseq.mak clean
 
 objs:
 	@if [ ! -d ./obj ]; then mkdir ./obj && echo "Creating ./obj...";fi
-	$(MAKE) objs -f create_mutation_list.mak
+	$(MAKE) objs -f cheapseq.mak
 
