@@ -3,22 +3,24 @@
 #$Id: create_mutation_list.mak 1749 2012-06-21 08:02:39Z favorov $
 #****************************************************************************#
 
+.PHONY:	all zip tar.gz clean fullclean
 
-.PHONY:	all objs clean fullclean
-
-all: ~/include/ccvars
-	@if [ ! -d ./obj ]; then mkdir ./obj && echo "Creating ./obj...";fi
-	$(MAKE) -f cheapseq.mak 
+all:
+	cd cheapseq; $(MAKE) all
 
 clean:
-	$(MAKE) -f cheapseq.mak clean
+	cd cheapseq; $(MAKE) clean
 
 fullclean:
-	$(MAKE) -f cheapseq.mak fullclean
-	
-objs:
-	@if [ ! -d ./obj ]; then mkdir ./obj && echo "Creating ./obj...";fi
-	$(MAKE) objs -f cheapseq.mak
+	cd cheapseq; $(MAKE) fullclean
+	rm coverage.tar.gz
+
+zip: tar.gz
+
+tar.gz: fullclean coverage.tar.gz
+
+coverage.tar.gz:
+	tar -cvf- cheapseq --exclude .svn --exclude chr9.fa.gz --exclude reads* --exclude mutations* ccvars boostdirs Makefile | gzip -c > coverage.tar.gz
 
 ~/include/ccvars: ../ccvars
 	@if [ ! -d ~/include ]; then mkdir ~/include && echo "Creating ~/include...";fi

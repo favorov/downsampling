@@ -23,7 +23,7 @@ include ~/include/boostdirs
 CPPFLAGS:=$(CPPFLAGS) -I $(boost_include)
 LINKFLAGS:=$(LINKFLAGS) -L $(boost_lib) -lboost_iostreams
 
-.PHONY: all objs clean
+.PHONY: all objs clean fullclean
 
 vpath %.c $(srcdirlist)
 vpath %.cpp $(srcdirlist)
@@ -59,3 +59,6 @@ clean:
 	rm -f $(OBJS)
 	rm -r -f *~
 
+fullclean: clean
+	rm -f $(exename)$(EXEEXT)
+	
