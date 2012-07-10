@@ -21,7 +21,7 @@ include ~/include/ccvars
 include ~/include/boostdirs
 
 CPPFLAGS:=$(CPPFLAGS) -I $(boost_include)
-LINKFLAGS:=$(LINKFLAGS) -L $(boost_lib) -lboost_iostreams
+LINKFLAGS:=$(LINKFLAGS) -L $(boost_lib) -lboost_iostreams -lboost_program_options
 
 .PHONY: all objs clean fullclean
 
@@ -35,8 +35,7 @@ all: $(exename)$(EXEEXT)
 
 
 OBJS=$(od)/$(name).o \
-$(od)/Sequences.o \
-$(od)/confread.o
+$(od)/Sequences.o 
 
 
 objs:$(OBJS)
@@ -53,7 +52,6 @@ $(exename)$(EXEEXT): $(OBJS)
 
 $(od)/$(name).o: $(name).cpp mutation.hpp Exception.hpp Sequences.hpp Atgc.hpp $(name)_config.hpp
 $(od)/Sequences.o: Sequences.cpp Sequences.hpp Exception.hpp Atgc.hpp 
-$(od)/confread.o: confread.c confread.h
 
 clean:
 	rm -f $(OBJS)

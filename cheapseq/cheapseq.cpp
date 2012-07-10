@@ -27,11 +27,6 @@ $Id$
 #include "mutation.hpp"
 #include "cheapseq_config.hpp"
 
-extern "C"
-{
-	#include "confread.h"
-}
-
 #define MUT_LIST_POSTFIX "mutation-list"
 #define READS_POSTFIX "reads" 
 #define ADD_MUT_INFO true
@@ -43,24 +38,8 @@ using namespace std;
 
 int main(int argc, char ** argv)
 {
-	if (
-		argc!=2 
-		||
-		!strcmp(argv[1],"-?") 
-		||
-		!strcmp(argv[1],"-h")
-		||
-		!strcmp(argv[1],"-help") 
-		||
-		!strcmp(argv[1],"--help") 
-	)
-	{
-		cout<<"create_mutation_list configfile"<<endl;
-		cout<<"It is a part of mutation-call-by-coverage project."<<endl;
-	}
-	
 	try {
-		config_parameters config(argv[1]);
+		config_parameters config(argc,argv);
 
 		cout<<config;
 		
@@ -111,7 +90,7 @@ int main(int argc, char ** argv)
 		mutation just_a_mut;
 
 		cout<<"Preparing mutations ..."<<flush;
-    boost::random::uniform_int_distribution<unsigned int> dist_mut_prob(0,config.nucleotides_per_snv-1);
+    boost::random::uniform_int_distribution<unsigned int> dist_mut_prob(0,config.bases_per_snv-1);
 		for (size_t pos=lower_pos;pos<=upper_pos;pos++)
 		{
 			//copy 1
@@ -144,7 +123,7 @@ int main(int argc, char ** argv)
 	
 		cout<<" done\n"<<flush;
 		cout<<"Preparing the read starts  ..."<<flush;
-		size_t reads_number=config.read_coverage*(upper_pos-lower_pos)/config.read_length;
+		size_t reads_number=config.coverage*(upper_pos-lower_pos)/config.read_length;
 
 		vector<size_t> reads(reads_number);
 
