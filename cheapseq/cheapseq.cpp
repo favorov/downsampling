@@ -144,6 +144,7 @@ int main(int argc, char ** argv)
 		vector<mutation>::iterator upper_mut=mumus.begin();
 		ofstream rstream(config.reads_file.c_str());
 		string conv_string(config.read_length,'n');
+		
 		bool initialized=false;
 		for (vector<size_t>::iterator read=reads.begin();read<reads.end();read++)
 		{

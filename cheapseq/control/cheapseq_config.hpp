@@ -60,22 +60,22 @@ struct config_parameters
 		noiser_random_seed_2(NSEED_2)
 	{
 		boost::program_options::options_description desc
-				("Cheapseq options for config file or command line.\n   Command-line options override config file;\n   section.option is the same as option in [section].\n");
+				("Cheapseq: emulates a chromosome sequencing with given coverage.\n   Command-line options override config file;\n   section.option is the same as option in [section].\n");
 		desc.add_options()
 				("help", "help")
 				("config-file", boost::program_options::value<string>(), "configuration file name")
-				("cheapseq.fasta_file", boost::program_options::value<string>(&fasta_file), "input FASTA file")
-				("cheapseq.chromosome_name", boost::program_options::value<string>(&chromosome_name), "chromosome name")
-				("cheapseq.bases_per_snv", boost::program_options::value<unsigned int>(&bases_per_snv), "one mutation (snv) is exopected per this number of bases")
-				("cheapseq.read_length", boost::program_options::value<unsigned int>(&read_length), "length of each read")
+				("cheapseq.fasta_file", boost::program_options::value<string>(&fasta_file), "reference (chromosome) FASTA file; can be *.gz also")
+				("cheapseq.chromosome_name", boost::program_options::value<string>(&chromosome_name), "reference chromosome name")
+				("cheapseq.bases_per_snv", boost::program_options::value<unsigned int>(&bases_per_snv), "one mutation (snv) is expected per this number of bases")
+				("cheapseq.read_length", boost::program_options::value<unsigned int>(&read_length), "length of each sequencing read")
 				("cheapseq.coverage", boost::program_options::value<unsigned int>(&coverage), "cheap (model) sequencing coverage")
 				("cheapseq.reads_file", boost::program_options::value<string>(&reads_file), "output FASTA file with reads")
 				("cheapseq.mutations_file", boost::program_options::value<string>(&mutations_file), "output file with mutations that we generated and coded in reads")
 				("cheapseq.random_seed_1", boost::program_options::value<unsigned int>(&random_seed_1), "random seed 1 for cheap sequencing")
 				("cheapseq.random_seed_2", boost::program_options::value<unsigned int>(&random_seed_2), "random seed 2 for cheap sequencing")
-				("noiser.bases_per_error", boost::program_options::value<unsigned int>(&noiser_bases_per_error), "one noise error is expected per this number of bases\n\t\t\tdefaut is 0 (no noise)")
-				("noiser.random_seed_1", boost::program_options::value<unsigned int>(&noiser_random_seed_1), "random seed 1 for noiser")
-				("noiser.random_seed_2", boost::program_options::value<unsigned int>(&noiser_random_seed_2), "random seed 2 for noiser")
+				//("noiser.bases_per_error", boost::program_options::value<unsigned int>(&noiser_bases_per_error), "one noise error is expected per this number of bases\n\t\t\tdefaut is 0 (no noise)")
+				//("noiser.random_seed_1", boost::program_options::value<unsigned int>(&noiser_random_seed_1), "random seed 1 for noiser")
+				//("noiser.random_seed_2", boost::program_options::value<unsigned int>(&noiser_random_seed_2), "random seed 2 for noiser")
 		;
 
 	//	boost::program_options::options_description desc("My options");
@@ -122,13 +122,13 @@ ostream & operator<< (ostream & os, const config_parameters & cp)
 	os<<"reads"<<"="<<cp.reads_file<<endl;
 	os<<"random_seed_1"<<"="<<cp.random_seed_1<<endl;
 	os<<"random_seed_2"<<"="<<cp.random_seed_2<<endl;
-	if (cp.noiser_bases_per_error) //>0
-	{
-		os<<"[noiser]"<<endl;
-		os<<"bases_per_error="<<cp.noiser_bases_per_error<<endl;
-		os<<"random_seed_1"<<"="<<cp.noiser_random_seed_1<<endl;
-		os<<"random_seed_2"<<"="<<cp.noiser_random_seed_2<<endl;
-	}
+	//if (cp.noiser_bases_per_error) //>0
+	//{
+	//	os<<"[noiser]"<<endl;
+	//	os<<"bases_per_error="<<cp.noiser_bases_per_error<<endl;
+	//	os<<"random_seed_1"<<"="<<cp.noiser_random_seed_1<<endl;
+	//	os<<"random_seed_2"<<"="<<cp.noiser_random_seed_2<<endl;
+	//}
 	return os;
 }
 
