@@ -60,11 +60,11 @@ struct config_parameters
 		noiser_random_seed_2(NSEED_2)
 	{
 		boost::program_options::options_description desc
-				("Cheapseq: emulates a chromosome sequencing with given coverage.\n   Command-line options override config file;\n   section.option is the same as option in [section].\n");
+				("Cheapseq: emulates a chromosome sequencing with given coverage.\n   Command-line options override config file;\n   section.option is the same as option in [section].\n Options (config file lines)");
 		desc.add_options()
 				("help", "help")
 				("config-file", boost::program_options::value<string>(), "configuration file name")
-				("cheapseq.fasta_file", boost::program_options::value<string>(&fasta_file), "reference (chromosome) FASTA file; can be *.gz also")
+				("cheapseq.fasta_file", boost::program_options::value<string>(&fasta_file), "reference (chromosome) FASTA file; can be *.gz")
 				("cheapseq.chromosome_name", boost::program_options::value<string>(&chromosome_name), "reference chromosome name")
 				("cheapseq.bases_per_snv", boost::program_options::value<unsigned int>(&bases_per_snv), "one mutation (snv) is expected per this number of bases")
 				("cheapseq.read_length", boost::program_options::value<unsigned int>(&read_length), "length of each sequencing read")
@@ -104,7 +104,8 @@ struct config_parameters
 		
 		} catch( const exception& e)
 			{
-					throw (*new DumbException(e.what()));
+					cout<<e.what()<<endl<<desc<<endl;
+					throw (*new DumbException(""));
 			}
 	}
 };
