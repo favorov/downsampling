@@ -8,8 +8,6 @@ $Id$
 
 #define SEED_1 1248312
 #define SEED_2 7436111
-#define NSEED_1 2732596
-#define NSEED_2 6596412
 
 #include <string>
 #include <stdio.h>
@@ -27,8 +25,6 @@ struct config_parameters
 	std::string mutations_file;
 	std::string reads_file;
 	unsigned int random_seed_1,random_seed_2;
-	unsigned int noiser_bases_per_error;
-	unsigned int noiser_random_seed_1,noiser_random_seed_2; 
 	config_parameters():
 		fasta_file(""),
 		chromosome_name(""),
@@ -38,10 +34,7 @@ struct config_parameters
 		mutations_file("mutations"),
 		reads_file("reads"),
 		random_seed_1(SEED_1),
-		random_seed_2(SEED_2),
-		noiser_bases_per_error(0),
-		noiser_random_seed_1(NSEED_1),
-		noiser_random_seed_2(NSEED_2)
+		random_seed_2(SEED_2)
 		{};
 
 
@@ -54,10 +47,7 @@ struct config_parameters
 		mutations_file("mutations"),
 		reads_file("reads"),
 		random_seed_1(SEED_1),
-		random_seed_2(SEED_2),
-		noiser_bases_per_error(0),
-		noiser_random_seed_1(NSEED_1),
-		noiser_random_seed_2(NSEED_2)
+		random_seed_2(SEED_2)
 	{
 		boost::program_options::options_description desc
 				("Cheapseq: emulates a chromosome sequencing with given coverage.\n   Command-line options override config file;\n   section.option is the same as option in [section].\n Options (config file lines)");
@@ -73,12 +63,7 @@ struct config_parameters
 				("cheapseq.mutations_file", boost::program_options::value<string>(&mutations_file), "output file with mutations that we generated and coded in reads")
 				("cheapseq.random_seed_1", boost::program_options::value<unsigned int>(&random_seed_1), "random seed 1 for cheap sequencing")
 				("cheapseq.random_seed_2", boost::program_options::value<unsigned int>(&random_seed_2), "random seed 2 for cheap sequencing")
-				//("noiser.bases_per_error", boost::program_options::value<unsigned int>(&noiser_bases_per_error), "one noise error is expected per this number of bases\n\t\t\tdefaut is 0 (no noise)")
-				//("noiser.random_seed_1", boost::program_options::value<unsigned int>(&noiser_random_seed_1), "random seed 1 for noiser")
-				//("noiser.random_seed_2", boost::program_options::value<unsigned int>(&noiser_random_seed_2), "random seed 2 for noiser")
 		;
-
-	//	boost::program_options::options_description desc("My options");
 
 		try { 
 			boost::program_options::positional_options_description pd; 
@@ -86,7 +71,7 @@ struct config_parameters
 			boost::program_options::variables_map vm;
 			boost::program_options::store(boost::program_options::command_line_parser(ac, av).options(desc).positional(pd).run(), vm);
 
-			boost::program_options::notify(vm);
+			//boost::program_options::notify(vm);
 
 			if (vm.count("help")) {
 					cout << desc << "\n";
