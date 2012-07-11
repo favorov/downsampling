@@ -5,12 +5,16 @@
 
 Here is provided a set of model tools, with the same configuraration file.
 
-Cheapseq.
+Cheapseq
 
 Cheapseq emulates a sequencing procedure, currently works only with one chromosome (reference sequence). Randonly generates and applies the mutations to all the reads; output the list of the mutations as well as Fasta with all the reads. 
 
 For help: ./cheapseq --help 
 
+Noiser
+Take a FastA/FastQ stream, noise randomly some positions, outputs FastA.
+
+For help: ./noiser --help 
 
 
 
