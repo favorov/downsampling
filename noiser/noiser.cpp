@@ -46,7 +46,8 @@ int main(int argc, char ** argv)
 		//boost::program_options::notify(vm);
 
 		if (vm.count("help")) {
-				cout << desc << "\n";
+			cout << desc << "\n";
+			return 0;	
 		}
 
 		if (vm.count("config-file")) 

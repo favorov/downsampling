@@ -12,11 +12,15 @@ Cheapseq emulates a sequencing procedure, currently works only with one chromoso
 For help: ./cheapseq --help 
 
 Noiser
-Take a FastA/FastQ stream, noise randomly some positions, outputs FastA.
+
+Take a FastA/FastQ stream, noise randomly some positions, outputs FastA. The main parameter is bases per error (0 is default, means no noise, actually, it is inf). 
 
 For help: ./noiser --help 
 
 
+DownSAM
 
+Downsamples a SAM file. SAM stream input, SAM stream output. Tha main parameter is reads in input per reads in output. 1 (default) means no downsampling.
 
+For help: ./downSAM --help 
 
