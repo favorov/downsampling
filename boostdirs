@@ -1,2 +1,2 @@
-boost_include=/d/boost/boost_1_50_0
-boost_lib=/d/boost/boost_1_50_0/stage/lib
+boost_include=~/boost/boost_1_50_0
+boost_lib=~/boost/boost_1_50_0/stage/lib

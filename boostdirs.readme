@@ -1,0 +1,21 @@
+#****************************************************************************#
+# mutation-call-by-coverage
+#$Id$
+#****************************************************************************#
+
+For all the three tools, we used boobt library. There are wo ways to use it - you can install it and thus integrate it into your system or you can just make it and use the make result (stage folder) to link your progrems with. We use the second method, whic requires a bit more additional information for the linker/compiler/dynamic library tools, but it is more flexible and portable.
+
+1) Choose the boost folder. In all our examples, it is ~/boost/
+2) download the boost src from http://www.boost.org/ to the folder and unpack it. The new folder name is like ~/boost/boost_1_50_0/. (It depends on the boost version in a obvious way).
+3) make it:
+cd ~/boost/boost_1_50_0/
+./bootstrap
+/b2
+4) To use the dynanic libraries, show the dll's folder to the system.
+Bruteforce way:
+MAC: DYLD_LIBRARY_PATH=~/boost/boost_1_50_0/stage/lib/:$DYLD_LIBRARY_PATH 
+Win7: PATH=%PATH%;D:\home\user\boost\boost_1_50_0\stage\lib
+UNIX: LD_LIBRARY_PATH=~/boost/boost_1_50_0/stage/lib/:$LD_LIBRARY_PATH
+Each system has more secure way to do the same thing.
+5) Now, we are ready to compile/link. Just edit the boostdirs file in the folder (it is for ~/boost/boost_1_50_0 setup) and copy it to ~include (it is not a standrs solution, just tradition for my software).
+6) Make and use the compiled programs.

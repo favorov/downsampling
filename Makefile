@@ -26,7 +26,7 @@ zip: tar.gz
 tar.gz: fullclean coverage.tar.gz
 
 coverage.tar.gz:
-	tar -cvf- cheapseq noiser downSAM --exclude .svn --exclude chr9.fa.gz --exclude reads* --exclude mutations* ccvars boostdirs Makefile | gzip -c > coverage.tar.gz
+	tar -cvf- cheapseq noiser downSAM readme boostdirs.readme --exclude .svn --exclude chr9.fa.gz --exclude reads* --exclude mutations* ccvars boostdirs Makefile | gzip -c > coverage.tar.gz
 
 ~/include/ccvars: ../ccvars
 	@if [ ! -d ~/include ]; then mkdir ~/include && echo "Creating ~/include...";fi
