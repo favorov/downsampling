@@ -23,20 +23,18 @@ $Id$
 //It is capped with \0 at the end.
 //
 
-#define usort unsigned short
-
 //we suppose that the random generator is already seede
 extern boost::random::ranlux64_4 gen;
 
 
 struct mutation{
 	mutation():chr(""),copy(0),pos(0),wild(0),mutated(0){};
-	mutation(string chr,unsigned long pos,ushort copy,unsigned short wild,unsigned short mutated=0):
+	mutation(string chr,unsigned long pos,unsigned short copy,unsigned short wild,unsigned short mutated=0):
 		chr(chr),copy(copy),pos(pos),wild(wild),mutated(mutated)
 		{
 			if (!mutated) mutate();
 		}
-	mutation(string chr,unsigned long pos,ushort copy,char wild,char mutated='x') throw (AtgcException):
+	mutation(string chr,unsigned long pos,unsigned short copy,char wild,char mutated='x') throw (AtgcException):
 		chr(chr),copy(copy),pos(pos),wild(Atgc::atgc2ushort(wild)),mutated(Atgc::atgc2ushort(mutated))
 		{
 			if (!mutated) mutate();
@@ -107,7 +105,7 @@ std::istream & operator>> (std::istream & is, mutation & mu)
 }
 
 inline 
-void apply (const mutation & mu, std::vector<ushort> & dna, unsigned long start=0, ushort copy=0)
+void apply (const mutation & mu, std::vector<unsigned short> & dna, unsigned long start=0, unsigned short copy=0)
 	throw (DumbException)
 {
 #define CHECKS 1

@@ -19,7 +19,7 @@ include ~/include/ccvars
 include ~/include/boostdirs
 
 CPPFLAGS:=$(CPPFLAGS) -I $(boost_include)
-LINKFLAGS:=$(LINKFLAGS) -L $(boost_lib) -lboost_iostreams -lboost_program_options -lboost_regex
+LINKFLAGS:=$(LINKFLAGS) -L$(boost_lib) -lboost_iostreams -lboost_program_options -lboost_regex
 
 .PHONY: all objs clean fullclean
 

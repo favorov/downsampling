@@ -168,12 +168,12 @@ int main(int argc, char ** argv)
 						lower_mut->pos < *read 
 					) lower_mut++; 
 			//it is the first mutation in the read's range
-			vector<ushort> read_seq;
-			vector<ushort>::iterator read_segment=sp[0].begin()+(*read);
+			vector<unsigned short> read_seq;
+			vector<unsigned short>::iterator read_segment=sp[0].begin()+(*read);
 			copy(read_segment,read_segment+config.read_length,back_inserter(read_seq));
 			rstream<<">read"<<reads_counter<<":"<<config.chromosome_name<<":"<<*read;
 			boost::random::uniform_int_distribution<int> random_copy(1,2);
-			ushort copy_id=random_copy(gen); //1 or 2
+			unsigned short copy_id=random_copy(gen); //1 or 2
 			rstream<<":"<<copy_id;
 			for(vector<mutation>::iterator mut=lower_mut;mut<upper_mut;mut++)
 				if (mut->copy==copy_id) 
