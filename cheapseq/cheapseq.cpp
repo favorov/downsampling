@@ -32,6 +32,7 @@ $Id$
 #define ADD_MUT_INFO true
 
 boost::random::ranlux64_4 gen;
+
 //generator is to be the only
 
 using namespace std;
