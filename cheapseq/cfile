@@ -7,5 +7,6 @@ read_length=100
 coverage=100
 mutations_file=mutations
 reads_file=reads
+sample-id=chr9-test
 random_seed_1=1248312
 random_seed_2=1436111
