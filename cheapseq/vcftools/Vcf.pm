@@ -1,6 +1,6 @@
 package Vcf;
 
-our $VERSION = 'r731';
+our $VERSION = 'r797';
 
 # http://vcftools.sourceforge.net/specs.html
 # http://www.1000genomes.org/wiki/Analysis/Variant%20Call%20Format/vcf-variant-call-format-version-41
@@ -213,13 +213,11 @@ sub _open
                 $cmd = "tabix $tabix_args |";
             }
             else { $cmd = "gunzip -c '$$self{file}' |"; } 
-            $$self{check_exit_status} = 1;
         }
         elsif ( $$self{file}=~m{^(?:http|ftp)://} )
         {
             if ( !exists($args{region}) ) { $tabix_args .= ' .'; }
             $cmd = "tabix $tabix_args |";
-            $$self{check_exit_status} = 1;
         }
         open($$self{fh},$cmd) or $self->throw("$cmd: $!");
     }
@@ -260,6 +258,7 @@ sub open
     About   : Close the filehandle
     Usage   : $vcf->close();
     Args    : none
+	Returns : close exit status
 
 =cut
 
@@ -267,8 +266,9 @@ sub close
 {
     my ($self) = @_;
     if ( !$$self{fh} ) { return; }
-    close($$self{fh});
+    my $ret = close($$self{fh});
     delete($$self{fh});
+	return $ret;
 }
 
 
@@ -308,14 +308,6 @@ sub next_line
             last;
         }
     }
-    if ( !defined $line && $$self{check_exit_status} )
-    {
-        my $pid = waitpid(-1, WNOHANG);
-        if ( $pid!=0 && $pid!=-1 && $? !=0 )
-        {
-            $self->throw("Error reading VCF file.\n");
-        }
-    }
     return $line;
 }
 
@@ -344,6 +336,7 @@ sub next_data_array
     if ( !$line ) { return undef; }
     if ( ref($line) eq 'ARRAY' ) { return $line; }
     my @items = split(/\t/,$line);
+    if ( @items<8 ) { $line=~s/\n/\\n/g; $self->throw("Could not parse the line: [$line]"); }
     chomp($items[-1]);
     return \@items;
 }
@@ -405,6 +398,7 @@ sub _set_version
         }
         elsif ( !($version_line=~/^##fileformat=/i) or !($version_line=~/(\d+(?:\.\d+)?)\s*$/i) ) 
         { 
+			chomp($version_line);
             $self->warn("Could not parse the fileformat version string [$version_line], assuming VCFv$$self{default_version}\n"); 
             undef $version_line;
         }
@@ -779,7 +773,7 @@ sub _header_line_exists
 =head2 remove_header_line
 
     Usage   : $vcf->remove_header_line(key=>'INFO', ID=>'AC')
-    Args    : 
+    Args    :
     Returns : 
 
 =cut
@@ -788,6 +782,7 @@ sub remove_header_line
 {
     my ($self,%args) = @_;
     my $key = $args{key};
+    my %to_be_removed;
     for (my $i=0; $i<@{$$self{header_lines}}; $i++)
     {
         my $line = $$self{header_lines}[$i];
@@ -796,7 +791,12 @@ sub remove_header_line
         {
             if ( $args{ID} ne $$line{ID} ) { next; }
             delete($$self{header}{$key}{$args{ID}});
-            splice(@{$$self{header_lines}},$i,1);
+            splice(@{$$self{header_lines}},$i--,1);
+        }
+        elsif ( scalar keys %args==1 && exists($$self{header}{$key}) )
+        {
+            splice(@{$$self{header_lines}},$i--,1);
+            $to_be_removed{$key} = 1;
         }
         else
         {
@@ -806,9 +806,10 @@ sub remove_header_line
             {
                 if ( $$self{header}{$key}[$j] eq $to_be_removed ) { splice(@{$$self{header}{$key}},$j,1); last; }
             }
-            splice(@{$$self{header_lines}},$i,1);
+            splice(@{$$self{header_lines}},$i--,1);
         }
     }
+    for my $key (keys %to_be_removed) { delete($$self{header}{$key}); }
 }
 
 
@@ -1067,7 +1068,8 @@ sub remove_field
     while ($itag!=$idx)
     {
         $isep = index($string,$sep,$prev_isep);
-        if ( $isep==-1 ) { $self->throw("The index out of range: $string:$isep .. $idx"); }
+        # The index may be out of range, VCFv4.1 allows omitting empty fields
+        if ( $isep==-1 ) { return $string; }
         $prev_isep = $isep+1;
         $itag++;
     }
@@ -1103,6 +1105,7 @@ sub replace_field
     while ($itag!=$idx)
     {
         $isep = index($string,$sep,$prev_isep);
+        # Todo: VCFv4.1 allows omitting empty fields, shouldn't fail here
         if ( $isep==-1 ) { $self->throw("The index out of range: $string:$isep .. $idx"); }
         $prev_isep = $isep+1;
         $itag++;
@@ -1188,7 +1191,7 @@ sub get_field
     {
         $isep = index($col,$delim,$prev_isep);
         if ( $itag==$idx ) { last; }
-        if ( $isep==-1 ) { $self->throw("The index out of range: $col:$isep .. $idx"); }
+        if ( $isep==-1 ) { return '.'; }    # This is valid, missing fields can be ommited from genotype columns
         $prev_isep = $isep+1;
         $itag++;
     }
@@ -1269,7 +1272,7 @@ sub split_mandatory
 
 =head2 split_gt
 
-    About   : Faster alternative to regexs, diploid GT assumed
+    About   : Faster alternative to regexs
     Usage   : my ($a1,$a2,$a3) = $vcf->split_gt('0/0/1'); # returns (0,0,1)
     Arg     : Diploid genotype to split into alleles
     Returns : Array of values
@@ -1293,6 +1296,35 @@ sub split_gt
     return (@als);
 }
 
+=head2 split_by
+
+    About   : Generalization of split_gt
+    Usage   : my ($a1,$a2,$a3) = $vcf->split_gt('0/0|1',qw(| /)); # returns (0,0,1)
+    Arg     : Diploid genotype to split into alleles
+    Returns : Array of values
+
+=cut
+
+sub split_by
+{
+    my ($self,$str,@seps) = @_;
+    my @out;
+    my $iprev = 0;
+    while (1)
+    {
+        my $min;
+        for my $sep (@seps)
+        {
+            my $idx = index($str,$sep,$iprev);
+            if ( $idx==-1 ) { next; }
+            if ( !defined $min or $idx<$min ) { $min=$idx }
+        }
+        push @out, defined $min ? substr($str,$iprev,$min-$iprev) : substr($str,$iprev);
+        if ( !defined $min ) { return @out; }
+        $iprev = $min+1;
+    }
+    return (@out);
+}
 
 =head2 decode_genotype
 
@@ -1619,7 +1651,7 @@ sub has_AGtags
     }
     if ( defined $out ) 
     {
-        for my $key qw(fmtA fmtG infoA infoG) { if ( !exists($$out{$key}) ) { $$out{$key}=[] } }
+        for my $key (qw(fmtA fmtG infoA infoG)) { if ( !exists($$out{$key}) ) { $$out{$key}=[] } }
     }
     return $out;
 }
@@ -2351,9 +2383,34 @@ sub validate_info_field
 
 =cut
 
+sub binom
+{
+    my ($n, $k) = @_;
+    my $b = 1;
+    if ( $k > $n-$k ) { $k = $n-$k; }
+    if ( $k < 1 ) { return 1; }
+    for (my $i=1; $i<=$k; $i++) { $b *= ($n-$k+$i)/$i; }
+    return $b;
+}
+
 sub validate_gtype_field
 {
     my ($self,$data,$alts,$format) = @_;
+
+    my @errs;
+    my $ploidy = 2; 
+    if ( !exists($$data{GT}) ) { push @errs, "The mandatory tag GT not present." unless $$self{ignore_missing_GT}; }
+    else
+    {
+        my (@als) = $self->split_by($$data{GT},@{$$self{gt_sep}});
+        for my $al (@als)
+        {
+            if ( $al eq '.' or $al eq '0' ) { next; }
+            if ( !($al=~/^[0-9]+$/) ) { push @errs, "Unable to parse the GT field [$$data{GT}], expected integers"; }
+            if ( !exists($$alts[$al-1]) ) { push @errs, "Bad ALT value in the GT field, the index [$al] out of bounds [$$data{GT}]."; last; }
+        }
+        $ploidy = @als;
+    }
 
     # Expected numbers
     my $ng = -1;
@@ -2364,11 +2421,10 @@ sub validate_gtype_field
         else
         {
             $na = @$alts;
-            $ng = (1+$na+1)*($na+1)/2;
+            $ng = binom($ploidy+$na,$ploidy);
         }
     }
 
-    my @errs;
     while (my ($key,$value) = each %$data)
     {
         if ( !exists($$self{header}{FORMAT}{$key}) )
@@ -2397,31 +2453,6 @@ sub validate_gtype_field
         {
             my $err = &{$$type{handler}}($self,$val,$$type{default});
             if ( $err ) { push @errs, $err; }
-        }
-    }
-    if ( !exists($$data{GT}) ) { push @errs, "The mandatory tag GT not present." unless $$self{ignore_missing_GT}; }
-    else
-    {
-        my $buf = $$data{GT};
-        while ($buf ne '')
-        {
-            my $al = $buf;
-            if ( $buf=~$$self{regex_gtsep} )
-            {
-                $al  = $`;
-                $buf = $';
-                if ( $buf eq '' ) { push @errs, "Unable to parse the GT field [$$data{GT}]."; last; }
-            }
-            else
-            {
-                $buf = '';
-            }
-
-            if ( !defined $al ) { push @errs, "Unable to parse the GT field [$$data{GT}]."; last; }
-            if ( $al eq '.' ) { next; }
-            if ( $al eq '0' ) { next; }
-            if ( !($al=~/^[0-9]+$/) ) { push @errs, "Unable to parse the GT field [$$data{GT}], expected integer."; last; }
-            if ( !exists($$alts[$al-1]) ) { push @errs, "Bad ALT value in the GT field, the index [$al] out of bounds [$$data{GT}]."; last; }
         }
     }
     if ( !@errs ) { return undef; }
@@ -2619,6 +2650,54 @@ sub get_samples
 }
 
 
+=head2 get_column
+
+    About   : Convenient way to get data for a sample
+    Usage   : my $rec = $vcf->next_data_array(); my $sample_col = $vcf->get_column($rec, 'NA0001');
+    Args 1  : Array pointer returned by next_data_array
+         2  : Column/Sample name
+
+=cut
+
+sub get_column
+{
+    my ($self,$line,$column) = @_;
+    if ( !exists($$self{has_column}{$column}) ) { $self->throw("No such column: [$column]\n"); }
+    my $idx = $$self{has_column}{$column};
+    return $$line[$idx-1];
+}
+
+=head2 get_column_name
+
+    About   : Mapping between zero-based VCF column and its name
+    Usage   : my $vcf = Vcf->new(); $vcf->parse_header(); my $name = $vcf->get_column_name(1); # returns POS
+    Args    : Index of the column (0-based)
+
+=cut
+
+sub get_column_name
+{
+    my ($self,$idx) = @_;
+    if ( $idx >= @{$$self{columns}} ) { $self->throw("The index out of bounds\n"); }
+    return $$self{columns}[$idx];
+}
+
+=head2 get_column_index
+
+    About   : Mapping between VCF column name and its zero-based index
+    Usage   : my $vcf = Vcf->new(); $vcf->parse_header(); my $name = $vcf->get_column_index('POS'); # returns 1
+    Args    : Name of the column
+
+=cut
+
+sub get_column_index
+{
+    my ($self,$column) = @_;
+    if ( !exists($$self{has_column}{$column}) ) { $self->throw("No such column: [$column]\n"); }
+    return $$self{has_column}{$column}-1;
+}
+
+
 #------------------------------------------------
 # Version 3.2 specific functions
 
@@ -2717,6 +2796,7 @@ sub new
         regex_gtsep => qr{[\\|/]},
         regex_gt    => qr{^(\.|\d+)([\\|/]?)(\.?|\d*)$},
         regex_gt2   => qr{^(\.|[0-9ACGTNIDacgtn]+)([\\|/]?)}, # . 0/1 0|1 A/A A|A D4/IACGT
+        gt_sep => [qw(\ | /)],
     };
 
     for my $key (keys %{$$self{_defaults}}) 
@@ -2779,6 +2859,7 @@ sub new
         regex_gtsep => qr{[|/]},                     # | /
         regex_gt    => qr{^(\.|\d+)([|/]?)(\.?|\d*)$},   # . ./. 0/1 0|1
         regex_gt2   => qr{^(\.|[0-9ACGTNacgtn]+|<[\w:.]+>)([|/]?)},   # . ./. 0/1 0|1 A/A A|A 0|<DEL:ME:ALU>
+        gt_sep => [qw(| /)],
     };
 
     for my $key (keys %{$$self{_defaults}}) 
@@ -2880,9 +2961,9 @@ sub Vcf4_0::parse_header_line
         $self->throw(qq[Could not parse header line: $line\nStopped at [$tmp].\n]);
     }
 
-    if ( $key ne 'PEDIGREE' && !exists($$rec{ID}) ) { $self->throw("Missing the ID tag in $line\n"); }
     if ( $key eq 'INFO' or $key eq 'FILTER' or $key eq 'FORMAT' )
     {
+        if ( $key ne 'PEDIGREE' && !exists($$rec{ID}) ) { $self->throw("Missing the ID tag in $line\n"); }
         if ( !exists($$rec{Description}) ) { $self->warn("Missing the Description tag in $line\n"); }
     }
     if ( exists($$rec{Number}) && $$rec{Number} eq '-1' ) { $self->warn("The use of -1 for unknown number of values is deprecated, please use '.' instead.\n\t$line\n"); }
@@ -2988,7 +3069,77 @@ sub Vcf4_0::fill_ref_alt_mapping
     return $new_ref;
 }
 
+=head2 normalize_alleles
 
+    About   : Makes REF and ALT alleles more compact if possible (e.g. TA,TAA -> T,TA)
+    Usage   : my $line = $vcf->next_data_array();
+              ($ref,@alts) = $vcf->normalize_alleles($$line[3],$$line[4]);
+
+=cut
+
+sub Vcf4_0::normalize_alleles
+{
+    my ($self,$ref,$alt) = @_;
+
+    my $rlen = length($ref);
+    if ( $rlen==1 or length($alt)==1 )  { return ($ref,$alt); }
+
+    my @als = split(/,/,$alt);
+    my $i = 1;
+    my $done = 0;
+    while ( $i<$rlen )
+    {
+        my $r = substr($ref,$rlen-$i,1);
+        for my $al (@als)
+        {
+            my $len = length($al);
+            if ( $i>=$len ) { $done = 1; }
+            my $c = substr($al,$len-$i,1);
+            if ( $c ne $r ) { $done = 1; last; }
+        }
+        if ( $done ) { last; }
+        $i++;
+    }
+    if ( $i>1 )
+    {
+        $i--;
+        $ref = substr($ref,0,$rlen-$i);
+        for (my $j=0; $j<@als; $j++) { $als[$j] = substr($als[$j],0,length($als[$j])-$i); }
+    }
+    return ($ref,@als);
+}
+
+sub Vcf4_0::normalize_alleles_pos
+{
+    my ($self,$ref,$alt) = @_;
+    my @als;
+    ($ref,@als) = $self->normalize_alleles($ref,$alt);
+
+    my $rlen = length($ref);
+    if ( $rlen==1 ) { return (0,$ref,@als); }
+    my $i = 0;
+    my $done = 0;
+    while ( $i+1<$rlen )
+    {
+        my $r = substr($ref,$i,1);
+        for my $al (@als)
+        {
+            my $len = length($al);
+            if ( $i+1>=$len ) { $done = 1; last; }
+            my $c = substr($al,$i,1);
+            if ( $c ne $r ) { $done = 1; last; }
+        }
+        if ( $done ) { last; }
+        $i++;
+    }
+    if ( $i<0 ) { $i = 0; }
+    if ( $i>0 )
+    {
+        substr($ref,0,$i,'');
+        for (my $j=0; $j<@als; $j++) { substr($als[$j],0,$i,''); }
+    }
+    return ($i,$ref,@als);
+}
 
 sub Vcf4_0::event_type
 {
@@ -3014,7 +3165,6 @@ sub Vcf4_0::event_type
 
     my $reflen = length($ref);
     my $len = length($allele);
-    
     my $ht;
     my $type;
     if ( $len==$reflen )
@@ -3148,6 +3298,7 @@ sub new
         regex_gtsep => qr{[|/]},                     # | /
         regex_gt    => qr{^(\.|\d+)([|/]?)(\.?|\d*)$},   # . ./. 0/1 0|1
         regex_gt2   => qr{^(\.|[0-9ACGTNacgtn]+|<[\w:.]+>)([|/]?)},   # . ./. 0/1 0|1 A/A A|A 0|<DEL:ME:ALU>
+        gt_sep => [qw(| /)],
     };
 
     $$self{ignore_missing_GT} = 1;
@@ -3177,6 +3328,8 @@ sub Vcf4_1::validate_line
         if ( !@$lines ) { $self->warn("The header tag 'contig' not present for CHROM=$$line{CHROM}. (Not required but highly recommended.)\n"); }
         $$self{_contig_validated}{$$line{CHROM}} = 1;
     }
+
+    if ( index($$line{CHROM},':')!=-1 ) { $self->warn("Colons not allowed in chromosome names: $$line{CHROM}\n"); }
 
     # Is the ID composed of alphanumeric chars
     if ( !($$line{ID}=~/^\S+$/) ) { $self->warn("Expected non-whitespace ID at $$line{CHROM}:$$line{POS}, but got [$$line{ID}]\n"); }
@@ -3225,20 +3378,9 @@ sub Vcf4_1::validate_alt_field
             if ( !($pos=~/^\S+:\d+$/) ) { $msg=', cannot parse sequence:position'; push @err,$item; next; }
             next;
         }
-        if ( $item=~/^\.[ACTGNactgn]*([ACTGNactgn])$/ )
-        {
-            if ( $ref1 ne $1 ) { $msg=', last base does not match the reference'; push @err,$item; }
-            next; 
-        }
-        elsif ( $item=~/^([ACTGNactgn])[ACTGNactgn]*\.$/ )
-        {
-            if ( substr($ref,-1,1) ne $1 ) { $msg=', first base does not match the reference'; push @err,$item; }
-            next; 
-        }
+        if ( $item=~/^\.[ACTGNactgn]*([ACTGNactgn])$/ ) { next; }
+        elsif ( $item=~/^([ACTGNactgn])[ACTGNactgn]*\.$/ ) { next; }
         if ( !($item=~/^[ACTGNactgn]+$|^<[^<>\s]+>$/) ) { push @err,$item; next; }
-        if ( $item=~/^<[^<>\s]+>$/ ) { next; }
-        if ( $ref_len==length($item) ) { next; }
-        if ( substr($item,0,1) ne $ref1 ) { $msg=', first base does not match the reference'; push @err,$item; next; }
     }
     if ( !@err ) { return undef; }
     return 'Could not parse the allele(s) [' .join(',',@err). ']' . $msg;
@@ -3296,7 +3438,18 @@ sub Vcf4_1::next_data_array
 sub Vcf4_1::event_type
 {
     my ($self,$rec,$allele) = @_;
-    if ( $allele=~/\[|\]|^\..+|.+\.$/ ) { return 'b'; }
+
+    my $len = length($allele);
+    if ( $len==1 ) { return $self->SUPER::event_type($rec,$allele); }
+
+    my $c = substr($allele,0,1);
+    if ( $c eq '<' ) { return ('u',0,$allele); }
+    elsif ( $c eq '[' or $c eq ']' or $c eq '.' ) { return 'b'; }
+
+    $c = substr($allele,-1,1);
+    if ( $c eq '[' or $c eq ']' or $c eq '.' ) { return 'b'; }
+    elsif ( index($allele,'[')!=-1 or index($allele,']')!=-1 ) { return 'b'; }
+
     return $self->SUPER::event_type($rec,$allele);
 }
 
