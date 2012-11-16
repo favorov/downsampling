@@ -56,20 +56,29 @@ $vcf_out->add_columns($sample_id);
 $vcf_out->add_header_line({key=>'FORMAT',ID=>'GT',Number=>'1',Type=>'String',Description=>"Genotype"});
 print $vcf_out->format_header();
 
+
+my ($prev_pos,$prev_thread)=(-1,-1);
+
 while(<MUTAT>)
 {
+	chomp;
+	s/\r//g;
+	next if /^#/;
 	my @line = split(":");
-	$snp = "$1/$2";
+	my $one_thread = undef;
+	my $output = ;
 
 	my %out;
-	$out{CHROM}  = $chr;
-	$out{POS}    = $pos;
+	$out{CHROM}  = $line[0];
+	$out{POS}    = $line[2];
+	
 	$out{ID}     = '.';
 	$out{ALT}    = [];
 	$out{REF}    = $refseq->get_base($chr,$pos);
 	$out{QUAL}   = '.';
 	$out{FILTER} = ['.'];
 	$out{FORMAT} = ['GT'];
+	$snp = "$1/$2";
 	$out{gtypes}{$id}{GT} = $snp;
 
 	$vcf_out->format_genotype_strings(\%out);
