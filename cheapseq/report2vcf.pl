@@ -57,31 +57,78 @@ $vcf_out->add_header_line({key=>'FORMAT',ID=>'GT',Number=>'1',Type=>'String',Des
 print $vcf_out->format_header();
 
 
-my ($prev_pos,$prev_thread)=(-1,-1);
+my ($chrom,$pos,$thread,$ref,$alt);
+
+my $prev_line_logged_to_vcf=0; 
 
 while(<MUTAT>)
 {
 	chomp;
 	s/\r//g;
 	next if /^#/;
-	my @line = split(":");
-	my $one_thread = undef;
-	my $output = ;
+	my ($cur_chrom,$cur_pos,$cur_thread,$cur_ref,$cur_alt) = split(":");
 
+	if ($prev_line_logged_to_vcf) #previous line was outputed 
+	{
+		($chrom,$pos,$thread,$ref,$alt)=($cur_chrom,$cur_pos,$cur_thread,$cur_ref,$cur_alt);
+		#save the current line
+		$prev_line_logged_to_vcf=0;
+		next;
+	}
+
+	if
+	(
+		$cur_chrom ne $chrom
+		||
+		$cur_pos ne $pos
+	)
+	{
+		#output $chom:$pos:......., i.e. prev line
+		output_model_mut_to_vcf($chom,$pos,$sample_id,$ref,[$alt]);
+		($chrom,$pos,$thread,$ref,$alt)=($cur_chrom,$cur_pos,$cur_thread,$cur_ref,$cur_alt);
+		#save the current line
+		$prev_line_logged_to_vcf=0;
+		next;
+	}
+
+	#if we are here, our current line and the prev line refer to the same chorm/pos, i.e. it is
+	#a two-thread mutation. All the prev/current line stuff is to account for the situation correctly
+	die "There are two mutations on the same thread at $chrom:$pos .\n" if $thread==$cur_thread;
+	#test different threads
+	die "There are two mutations with different reference at $chrom:$pos .\n" if $ref ne $cur_ref;
+	#test same ref
+
+	output_model_mut_to_vcf($chom,$pos,$sample_id,$ref,[$alt,$cur_alt]);
+	$prev_line_logged_to_vcf=1;
+}
+close(MUTAT);
+
+# chrom, pos, id, ref, alt_list (ref to a list)
+sub output_model_mut_to_vcf
+{
+	my ($chrom,$pos,$id,$ref,$alt_list_ref)=@_;
 	my %out;
-	$out{CHROM}  = $line[0];
-	$out{POS}    = $line[2];
+	my $snp;
+	$out{CHROM}  = $chrom;
+	$out{POS}    = $pos;
 	
 	$out{ID}     = '.';
-	$out{ALT}    = [];
-	$out{REF}    = $refseq->get_base($chr,$pos);
+	$out{ALT}    = $alt_list_ref;
+	$out{REF}    = $ref;
 	$out{QUAL}   = '.';
 	$out{FILTER} = ['.'];
 	$out{FORMAT} = ['GT'];
-	$snp = "$1/$2";
+	if (scalar(@$alt_list_ref)==1)
+	{
+		$snp = "0/1";
+	}
+	elsif(scalar(@$alt_list_ref)==2)
+	{
+		$snp = "1/2";
+	}
+	else die "There are <1 or >2 alt's at $chrom:$pos .\n" 
 	$out{gtypes}{$id}{GT} = $snp;
 
 	$vcf_out->format_genotype_strings(\%out);
 	print $vcf_out->format_line(\%out);
 }
-close(MUTAT);
