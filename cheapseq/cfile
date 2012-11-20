@@ -2,7 +2,7 @@
 #fasta_file=chr9.fa
 fasta_file=chr9.fa.gz
 chromosome_name=chr9
-nucleotides_per_snv=1000
+bases_per_snv=1000
 read_length=100
 coverage=100
 mutations_file=mutations
