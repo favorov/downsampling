@@ -161,13 +161,10 @@ int main(int argc, char ** argv)
 				}
 				//init lower_mut when it is below the end of any (first potentially mutated) read
 			}
-			else 
-				while
-					( 
-						lower_mut < mumus.end() 
-						&& 
-						lower_mut->pos < *read 
-					) lower_mut++; 
+			//so, if the first mutation is upper than the current read start, we do not init anything
+			//and the mutation cycle will actually be voided because lower_mut==mumus.end()
+			//if it is lower, we init the process
+			if (initialized)	while ( lower_mut < mumus.end() && lower_mut->pos < *read ) lower_mut++; 
 			//it is the first mutation in the read's range
 			vector<unsigned short> read_seq;
 			vector<unsigned short>::iterator read_segment=sp[0].begin()+(*read);

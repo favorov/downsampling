@@ -23,7 +23,7 @@ $Id$
 //It is capped with \0 at the end.
 //
 
-//we suppose that the random generator is already seede
+//we suppose that the random generator is already seeded
 extern boost::random::ranlux64_4 gen;
 
 
