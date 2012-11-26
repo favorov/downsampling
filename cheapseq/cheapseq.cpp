@@ -52,6 +52,9 @@ int main(int argc, char ** argv)
 
 		SequencesPile sp;
 
+		if (config.fasta_file.length()<2)
+			{throw * new DumbException("Too short or empty fasta file name.\n");}
+
 		if (!config.fasta_file.substr(config.fasta_file.length()-2,2).compare("gz"))
 		{
 			cout<<"Opening gzipped fasta..."<<flush;
