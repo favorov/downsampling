@@ -4,7 +4,7 @@
 #$Id: cheapseq.cpp 1810 2012-11-14 23:48:38Z favorov $
 #****************************************************************************
 use strict;
-use vcftools.pm::Vcf;
+use vcftools_pm::Vcf;
 
 my $argc = @ARGV;
 
