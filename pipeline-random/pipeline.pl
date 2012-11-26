@@ -5,7 +5,8 @@
 #****************************************************************************
 use strict;
 
-my $cheapseq_folder="../coverage/cheapseq"
+my $cheapseq_folder="../cheapseq";
+my $report2vcf_folder=$cheapseq_folder;
 
 
 my $argc = @ARGV;
@@ -34,7 +35,9 @@ If mutations file is newer that its vcf form or the latter does not exist, rewri
 		)
 );
 
-open( CONFIG, $ARGV[0] ) or print "Can't open config file $ARGV[0]. Error is  '$!' \n" and exit;
+my $cfile_name=$ARGV[0];
+
+open( CONFIG, $cfile_name ) or print "Can't open config file $cfile_name. Error is  '$!' \n" and exit;
 
 my ($fasta_file, $sample_id, $mutations_file);
 
@@ -52,4 +55,12 @@ while (<CONFIG>) {
 	$mutations_file = $line[1] if $line[0] eq 'mutations_file';
 }
 
+print "#Random coverage mutatition test pipeline. Config file is $ARGV[0], sample id is $sample_id.";
 
+if (! -e $mutations_file) 
+{
+	my $cheapseq_string=$cheapseq_folder."/cheapseq";
+	print "#Start cheapseq...\n";
+	system($cheapseq_string,$cfile_name) == 0 or die ("Cheapseq start failed: $?\n");
+	print "#Finished (cheapseq) ...\n";
+}
