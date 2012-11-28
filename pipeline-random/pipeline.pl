@@ -7,7 +7,7 @@ use strict;
 
 my $cheapseq_folder="../cheapseq";
 my $report2vcf_folder=$cheapseq_folder;
-
+my $bowtie_folder="../../tools-src/bowtie/src/bowtie-0.12.8";
 
 my $argc = @ARGV;
 
@@ -39,7 +39,7 @@ my $cfile_name=$ARGV[0];
 
 open( CONFIG, $cfile_name ) or print "Can't open config file $cfile_name. Error is  '$!' \n" and exit;
 
-my ($fasta_file, $sample_id, $mutations_file, $reads_file);
+my ($fasta_file, $sample_id, $mutations_file, $reads_file, $bowtie_index_base);
 
 while (<CONFIG>) {
 	chomp;
@@ -54,6 +54,7 @@ while (<CONFIG>) {
 	$sample_id 	= $line[1] if $line[0] eq 'sample_id';
 	$reads_file = $line[1] if $line[0] eq 'reads_file';
 	$mutations_file = $line[1] if $line[0] eq 'mutations_file';
+	$bowtie_index_base= $line[1] if $line[0] eq 'bowtie_index_base';
 }
 
 print "#Random coverage mutatition test pipeline. Config file is $ARGV[0], sample id is $sample_id.\n";
@@ -91,5 +92,44 @@ if ( ! -e $vcf_mutations_file )
 else
 {
 	print "#Mutations file is already converted to vcf.\n";
+}
+
+if (! 
+	(
+		-e $bowtie_index_base.".1.ebwt"
+		&&
+		-e $bowtie_index_base.".2.ebwt"
+		&&
+		-e $bowtie_index_base.".3.ebwt"
+		&&
+		-e $bowtie_index_base.".4.ebwt"
+		&&
+		-e $bowtie_index_base.".rev.1.ebwt"
+		&&
+		-e $bowtie_index_base.".rev.2.ebwt"
+	) 
+)
+{
+	print "#Building Bowtie index...\n";
+	my $gzipped=$fasta_file =~ /.*.gz/;
+	my $fasta_ungzipped_file="";
+	if ($gzipped)
+	{
+		print "#Gzipped FASTA\n";
+		$fasta_ungzipped_file=substr $fasta_file, 0 , -3;
+		system "gzip -dc $fasta_file > $fasta_ungzipped_file";
+		print "#unGzipped ...\n";
+		system("$bowtie_folder/bowtie-build $fasta_ungzipped_file $bowtie_index_base");
+	}
+	if ($gzipped)
+	{
+		unlink $fasta_ungzipped_file;
+		print "#Unlink unGzipped ...\n"
+	}
+	print "#Finished (Biuld Bowtie index) ...\n";
+}
+else
+{
+	print "#Bowtie index is already build.\n";
 }
 
