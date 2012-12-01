@@ -5,10 +5,13 @@
 #****************************************************************************
 use strict;
 
+sub unlink_first_if_it_is_older($$);
+
 my $cheapseq_folder="../cheapseq";
 my $report2vcf_folder=$cheapseq_folder;
 my $bowtie_folder="../../tools-src/bowtie/src/bowtie-0.12.8";
-
+my $samtools_folder="../../tools-src/samtools/samtools-0.1.18";
+my $bcftools_folder="$samtools_folder/bcftools";
 my $argc = @ARGV;
 
 print "\ncovearage.pl runs the coverage-testing pipeline .\n
@@ -18,7 +21,14 @@ print "\ncovearage.pl runs the coverage-testing pipeline on a config file.\n
 Usage: perl report2vcf config-file\n
 First, it tests whether the Fasta with reads exist 
 If no, it runs cheapseq config-file 
-If mutations file is newer that its vcf form or the latter does not exist, rewrite vcf
+If mutations file is newer that its vcf form or the latter does not exist, rewrite vcf.
+The vcf file name is mutation_file field from config with \".vcf\" suffix.
+If there is no bowtie index (bowtie_index_base is to be in config), biuld it from fasta_file.
+The reads_file name is known from config. If there is no reads_file.bam file or it is older
+than the read file, we run bowtie | samtools to align reads against the index and write bam file.
+If there is not reads_file.vcf or it is older than the bam, samtools+bcftools make basecalling 
+from the bam file write ruslts to reads_file.vcf .
+
 
 \n\n
 " and exit if 
@@ -75,9 +85,7 @@ my $vcf_mutations_file=$mutations_file.".vcf";
 
 if ( -e $vcf_mutations_file ) 
 {
-	my $vcf_write_secs = (stat($vcf_mutations_file))[9];
-	my $mut_write_secs = (stat($mutations_file))[9];
-	unlink $vcf_mutations_file if $vcf_write_secs<$mut_write_secs;
+	unlink_first_if_it_is_older($vcf_mutations_file,$mutations_file);
 	#vcf file is to be younger than mutations file
 }
 
@@ -131,5 +139,66 @@ if (!
 else
 {
 	print "#Bowtie index is already build.\n";
+}
+
+
+
+# here, we will start the internal cycle of the pipeline. It can be a cyccle, do now we just include it in {}
+
+{
+	my $alingment_file_name=$reads_file;
+	if ( -e $alingment_file_name.".bam")
+	{
+		unlink_first_if_it_is_older($alingment_file_name.".bam",$reads_file);
+		#alignment is to be younger
+	}
+	if ( ! -e $alingment_file_name.".bam")
+	{
+
+		print("#Aligning reads with Bowtie\n");
+		#./bowtie -S -v 2 -m 1 --un unmapped.tests.sam -f chr1_gl000192_random reads.test --sam-RG SM:quasiburroed 2> bowtie.log.test.sam | ./samtools view -Sbh -   >  mapped.test.bam
+		system("$bowtie_folder/bowtie -S -v 2 -m 1 --un $alingment_file_name.unmapped --sam-RG SM:$sample_id -f $bowtie_index_base $reads_file 2> bowtie.$alingment_file_name.log > $alingment_file_name.sam");
+		print("#sam->bam\n");
+		system("$samtools_folder/samtools view -Sbh $alingment_file_name.sam > $alingment_file_name.bam");
+		print "#Finished (alignment) ...\n";
+		unlink "$alingment_file_name.sam";
+	}
+	else
+	{
+		print "#Aligning is already build.\n";
+	}
+#vcf only
+#./samtools mpileup -uf chr1_gl000192_random.fa.gz buegyrshlopak.bam | ./bcftools view -cvg - > mapped.calls-bue.vcf 
+#vcf and bcf 
+#./samtools mpileup -uf chr1_gl000192_random.fa.gz buegyrshlopak.bam | ./bcftools view -bcvg - > mapped.calls-bue.bcf 
+#./bcftools view mapped.calls-bue.bcf > mapped.calls-bue.vcf
+	if ( -e $alingment_file_name.".vcf")
+	{
+		unlink_first_if_it_is_older($alingment_file_name.".vcf",$alingment_file_name.".bam");
+		#vcf is to be younger
+	}
+	if ( ! -e $alingment_file_name.".vcf")
+	{
+		print("#Make basecalling\n");
+		system("$samtools_folder/samtools mpileup -uf $fasta_file $alingment_file_name.bam > $alingment_file_name.pileup");
+		print("#pileup->vcf\n");
+		system("$bcftools_folder/bcftools view -cvg $alingment_file_name.pileup > $alingment_file_name.vcf");
+		print "#Finished (basecalling) ...\n";
+		unlink "$alingment_file_name.pileup"
+	}
+	else
+	{
+		print "#Basecalling is already done.\n";
+	}
+}
+
+
+#service functions
+sub unlink_first_if_it_is_older($$)
+{
+	my ($vcf_mutations_file,$mutations_file)=@_;
+	my $vcf_write_secs = (stat($vcf_mutations_file))[9];
+	my $mut_write_secs = (stat($mutations_file))[9];
+	unlink $vcf_mutations_file if $vcf_write_secs<$mut_write_secs;
 }
 

@@ -3,7 +3,7 @@
 #$Id$
 #****************************************************************************#
 
-.PHONY:	all zip tar.gz clean fullclean
+.PHONY:	all zip tar tar.gz clean fullclean
 
 all:
 	cd cheapseq; $(MAKE) all
@@ -21,12 +21,14 @@ fullclean:
 	cd downSAM; $(MAKE) fullclean
 	rm -f coverage.tar.gz
 
+tar: zip
+
 zip: tar.gz
 
 tar.gz: fullclean coverage.tar.gz
 
 coverage.tar.gz:
-	tar -cvf- cheapseq noiser downSAM readme boostdirs.readme --exclude .svn --exclude chr9.fa.gz --exclude reads* --exclude mutations* ccvars boostdirs Makefile | gzip -c > coverage.tar.gz
+	tar -cvf- cheapseq noiser downSAM pipeline-random readme boostdirs.readme --exclude .svn --exclude chr9.fa.gz --exclude reads* --exclude mutations* ccvars boostdirs Makefile | gzip -c > coverage.tar.gz
 
 ~/include/ccvars: ../ccvars
 	@if [ ! -d ~/include ]; then mkdir ~/include && echo "Creating ~/include...";fi
