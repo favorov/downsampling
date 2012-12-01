@@ -24,6 +24,9 @@ $Id$
 //
 
 //we suppose that the random generator is already seeded
+
+//Everything is 1-based!!!
+
 extern boost::random::ranlux64_4 gen;
 
 
@@ -41,7 +44,7 @@ struct mutation{
 		};
 	string chr;
 	unsigned short copy; // 0 is 'unknown'
-	unsigned long pos;
+	unsigned long pos; // 0 is 'unknown'
 	unsigned short wild;
 	unsigned short mutated;
 	void choose_copy()
@@ -107,6 +110,8 @@ std::istream & operator>> (std::istream & is, mutation & mu)
 inline 
 void apply (const mutation & mu, std::vector<unsigned short> & dna, unsigned long start=0, unsigned short copy=0)
 	throw (DumbException)
+//start is the start of the dna chunk we are going to mutate
+//mu.pos is the in-chromosome position
 {
 #define CHECKS 1
 #if CHECKS>0
@@ -115,12 +120,12 @@ void apply (const mutation & mu, std::vector<unsigned short> & dna, unsigned lon
 	if (start>mu.pos)
 		throw	* new DumbException("Applying mutation to wrong position!\n");
 #endif
-	size_t pos=mu.pos-start;
+	size_t index=mu.pos-start; // mu.pos and start are both 1-based, so index=position-1
 #if CHECKS>0
-	if (mu.wild != dna[pos])
+	if (mu.wild != dna[index])
 		throw	* new DumbException("Applying mutation to a wrong base!\n");
 #endif
-	dna[pos]=mu.mutated;
+	dna[index]=mu.mutated;
 }
 
 #endif

@@ -80,14 +80,17 @@ int main(int argc, char ** argv)
 
 		cout<<" done.\n"<<flush;
 
-		size_t lower_pos=0,upper_pos=sp[0].size()-1;
-		//lower and upper non-N position in the sequence
+		size_t lower_index=0,upper_index=sp[0].size()-1;
+		//lower and upper non-N indices in the sequence
+		//position=index+1
 		//TBCIMC (To Be Changed If Multiple Chromosomes)
 		
-		while(sp[0][lower_pos]==Atgc::atgc2ushort('n')) lower_pos++;
-		while(sp[0][upper_pos]==Atgc::atgc2ushort('n')) upper_pos--;
+		while(sp[0][lower_index]==Atgc::atgc2ushort('n')) lower_index++;
+		while(sp[0][upper_index]==Atgc::atgc2ushort('n')) upper_index--;
 
-		cout<<"Atgc interval: "<<lower_pos<<":"<<upper_pos<<endl<<flush; 
+		cout<<"Atgc interval: "<<lower_index+1<<":"<<upper_index+1<<endl<<flush; 
+		
+		// 0 - based
 
 		vector<mutation> mumus;
 		
@@ -95,7 +98,7 @@ int main(int argc, char ** argv)
 
 		cout<<"Preparing mutations ..."<<flush;
     boost::random::uniform_int_distribution<unsigned int> dist_mut_prob(0,config.bases_per_snv-1);
-		for (size_t pos=lower_pos;pos<=upper_pos;pos++)
+		for (size_t pos=lower_index+1;pos<=upper_index+1;pos++)
 		{
 			//copy 1
 			if (dist_mut_prob(gen)==0)
@@ -103,7 +106,7 @@ int main(int argc, char ** argv)
 				mumus.push_back(just_a_mut);
 				mumus.back().chr=config.chromosome_name;
 				mumus.back().pos=pos;
-				mumus.back().wild=sp[0][pos];
+				mumus.back().wild=sp[0][pos-1];
 				mumus.back().copy=1;
 				mumus.back().mutate();
 			}
@@ -113,7 +116,7 @@ int main(int argc, char ** argv)
 				mumus.push_back(just_a_mut);
 				mumus.back().chr=config.chromosome_name;
 				mumus.back().pos=pos;
-				mumus.back().wild=sp[0][pos];
+				mumus.back().wild=sp[0][pos-1];
 				mumus.back().copy=2;
 				mumus.back().mutate();
 			}
@@ -127,16 +130,17 @@ int main(int argc, char ** argv)
 	
 		cout<<" done\n"<<flush;
 		cout<<"Preparing the read starts  ..."<<flush;
-		size_t reads_number=config.coverage*(upper_pos-lower_pos)/config.read_length;
+		size_t reads_number=config.coverage*(upper_index-lower_index)/config.read_length;
 
-		vector<size_t> reads(reads_number);
+		vector<size_t> read_starts(reads_number);
+		//read starts
 
-    boost::random::uniform_int_distribution<size_t> random_read_start(lower_pos,upper_pos-config.read_length);
+    boost::random::uniform_int_distribution<size_t> random_read_start(lower_index+1,upper_index-config.read_length+2);
+		//starts are 1-based
+		for (vector<size_t>::iterator read_start_ptr=read_starts.begin();read_start_ptr<read_starts.end();read_start_ptr++)
+			*read_start_ptr=random_read_start(gen);
 
-		for (vector<size_t>::iterator read=reads.begin();read<reads.end();read++)
-			*read=random_read_start(gen);
-
-		sort(reads.begin(),reads.end());
+		sort(read_starts.begin(),read_starts.end());
 		
 		cout<<" done\n"<<flush;
 
@@ -150,14 +154,14 @@ int main(int argc, char ** argv)
 		string conv_string(config.read_length,'n');
 		
 		bool initialized=false;
-		for (vector<size_t>::iterator read=reads.begin();read<reads.end();read++)
+		for (vector<size_t>::iterator read_start_ptr=read_starts.begin();read_start_ptr<read_starts.end();read_start_ptr++)
 		{
 			
-			while( upper_mut<mumus.end() && upper_mut->pos<(*read)+config.read_length) upper_mut++; 
+			while( upper_mut<mumus.end() && upper_mut->pos<(*read_start_ptr)+config.read_length) upper_mut++; 
 			//it is the end() of the read's range mutations 
 			if (!initialized)//lower_mut==mumus.end()
 			{
-				if (mumus.begin()->pos < (*read)+config.read_length) 
+				if (mumus.begin()->pos < (*read_start_ptr)+config.read_length) 
 				{
 					lower_mut=mumus.begin();
 					initialized=true;
@@ -167,20 +171,20 @@ int main(int argc, char ** argv)
 			//so, if the first mutation is upper than the current read start, we do not init anything
 			//and the mutation cycle will actually be voided because lower_mut==mumus.end()
 			//if it is lower, we init the process
-			if (initialized)	while ( lower_mut < mumus.end() && lower_mut->pos < *read ) lower_mut++; 
+			if (initialized)	while ( lower_mut < mumus.end() && lower_mut->pos < *read_start_ptr ) lower_mut++; 
 			//it is the first mutation in the read's range
 			vector<unsigned short> read_seq;
-			vector<unsigned short>::iterator read_segment=sp[0].begin()+(*read);
+			vector<unsigned short>::iterator read_segment=sp[0].begin()+(*read_start_ptr)-1;
 			copy(read_segment,read_segment+config.read_length,back_inserter(read_seq));
-			rstream<<">read"<<reads_counter<<":"<<config.chromosome_name<<":"<<*read;
+			rstream<<">read"<<reads_counter<<":"<<config.chromosome_name<<":"<<*read_start_ptr;
 			boost::random::uniform_int_distribution<int> random_copy(1,2);
 			unsigned short copy_id=random_copy(gen); //1 or 2
 			rstream<<":"<<copy_id;
 			for(vector<mutation>::iterator mut=lower_mut;mut<upper_mut;mut++)
 				if (mut->copy==copy_id) 
 				{	
-					apply(*mut,read_seq,*read,copy_id);
-					rstream<<"#"<<*mut;
+					apply(*mut,read_seq,*read_start_ptr,copy_id);
+					rstream<<"#"<<mut->pos<<":"<<mut->wild<<"->"<<mut->mutated;
 				}
 			rstream<<endl;
 			Atgc::ushortv2string(read_seq,conv_string);
