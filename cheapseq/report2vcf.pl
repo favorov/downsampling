@@ -105,6 +105,8 @@ while(<MUTAT>)
 	$prev_line_logged_to_vcf=1;
 }
 close(MUTAT);
+output_model_mut_to_vcf($chrom,$pos,$sample_id,$ref,[$alt]) if (!$prev_line_logged_to_vcf);
+#the last line. We are not to frgrt it.
 
 # chrom, pos, id, ref, alt_list (ref to a list)
 sub output_model_mut_to_vcf
@@ -114,12 +116,17 @@ sub output_model_mut_to_vcf
 	my $snp;
 	#print "out call: $chrom:$pos:$id:$ref:",join(",",@$alt_list_ref),"\n";
 	#return;
+	my $ucref=uc $ref;
+	my @ucalt=();	
+	push @ucalt, uc foreach @$alt_list_ref;
+	#the ref and the altlist are both moved to uppercase;
+	#hstcmd like its two vcf's to have the came case of ref and alt fields
 	$out{CHROM}  = $chrom;
 	$out{POS}    = $pos;
 	
 	$out{ID}     = '.';
-	$out{ALT}    = $alt_list_ref;
-	$out{REF}    = $ref;
+	$out{ALT}    = \@ucalt;
+	$out{REF}    = $ucref;
 	$out{QUAL}   = '.';
 	$out{FILTER} = ['.'];
 	$out{FORMAT} = ['GT'];
