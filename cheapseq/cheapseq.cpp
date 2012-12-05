@@ -121,7 +121,7 @@ int main(int argc, char ** argv)
 				mumus.back().mutate();
 			}
 		}
-
+		//cout<<endl<<last mut is "<<*(mumus.end()-1)<<endl;
 		cout<<" done\n"<<flush;
 		cout<<"Writing mutations ..."<<flush;
 		ofstream mstream(config.mutations_file.c_str());

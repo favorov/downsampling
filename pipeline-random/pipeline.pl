@@ -12,6 +12,10 @@ my $report2vcf_folder=$cheapseq_folder;
 my $bowtie_folder="../../tools-src/bowtie/src/bowtie-0.12.8";
 my $samtools_folder="../../tools-src/samtools/samtools-0.1.18";
 my $bcftools_folder="$samtools_folder/bcftools";
+my $vcftools_folder="../../tools-src/vcftools/vcftools/cpp";
+my $bgzip_folder="../../tools-src/tabix/tabix-0.2.6";
+
+
 my $argc = @ARGV;
 
 print "\ncovearage.pl runs the coverage-testing pipeline .\n
@@ -92,7 +96,7 @@ if ( -e $vcf_mutations_file )
 if ( ! -e $vcf_mutations_file ) 
 {
 	#my $report2vcf_string="perl -I $report2vcf_folder $report2vcf_folder."/report2vcf.pl";
-	my $report2vcf_string="perl -I $report2vcf_folder $report2vcf_folder/report2vcf.pl $cfile_name > $vcf_mutations_file";
+	my $report2vcf_string="perl -I $report2vcf_folder $report2vcf_folder/report2vcf.pl $cfile_name | $bgzip_folder/bgzip > $vcf_mutations_file.gz";
 	print "#Start report->vcf...\n";
 	system($report2vcf_string) == 0 or die ("Report2vcf.pl start failed: $?\n");
 	print "#Finished (report->vcf) ...\n";
@@ -172,17 +176,17 @@ else
 #vcf and bcf 
 #./samtools mpileup -uf chr1_gl000192_random.fa.gz buegyrshlopak.bam | ./bcftools view -bcvg - > mapped.calls-bue.bcf 
 #./bcftools view mapped.calls-bue.bcf > mapped.calls-bue.vcf
-	if ( -e $alingment_file_name.".vcf")
+	if ( -e $alingment_file_name.".vcf.gz")
 	{
-		unlink_first_if_it_is_older($alingment_file_name.".vcf",$alingment_file_name.".bam");
+		unlink_first_if_it_is_older($alingment_file_name.".vcf.gz",$alingment_file_name.".bam");
 		#vcf is to be younger
 	}
-	if ( ! -e $alingment_file_name.".vcf")
+	if ( ! -e $alingment_file_name.".vcf.gz")
 	{
 		print("#Make basecalling\n");
 		system("$samtools_folder/samtools mpileup -uf $fasta_file $alingment_file_name.bam > $alingment_file_name.pileup");
 		print("#pileup->vcf\n");
-		system("$bcftools_folder/bcftools view -cvg $alingment_file_name.pileup > $alingment_file_name.vcf");
+		system("$bcftools_folder/bcftools view -cvg $alingment_file_name.pileup | $bgzip_folder/bgzip > $alingment_file_name.vcf.gz");
 		print "#Finished (basecalling) ...\n";
 		unlink "$alingment_file_name.pileup"
 	}
@@ -190,6 +194,8 @@ else
 	{
 		print "#Basecalling is already done.\n";
 	}
+	system("$vcftools_folder/vcftools --gzdiff $vcf_mutations_file.gz --gzvcf $alingment_file_name.vcf.gz --out $alingment_file_name.diff");
+#	system("$vcftools_folder/vcftools --gzdiff $vcf_mutations_file.gz --gzvcf $alingment_file_name.vcf.gz --diff-site-discordance --out $alingment_file_name.diff");
 }
 
 
