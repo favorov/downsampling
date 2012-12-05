@@ -25,6 +25,7 @@ struct config_parameters
 	std::string mutations_file;
 	std::string reads_file;
 	unsigned int random_seed_1,random_seed_2;
+	std::string random_state_file;
 	config_parameters():
 		fasta_file(""),
 		chromosome_name(""),
@@ -34,7 +35,8 @@ struct config_parameters
 		mutations_file("mutations"),
 		reads_file("reads"),
 		random_seed_1(SEED_1),
-		random_seed_2(SEED_2)
+		random_seed_2(SEED_2),
+		random_state_file("")
 		{};
 
 
@@ -47,7 +49,8 @@ struct config_parameters
 		mutations_file("mutations"),
 		reads_file("reads"),
 		random_seed_1(SEED_1),
-		random_seed_2(SEED_2)
+		random_seed_2(SEED_2),
+		random_state_file("")
 	{
 		boost::program_options::options_description desc
 				("Cheapseq: emulates a chromosome sequencing with given coverage.\n   Command-line options override config file;\n   section.option is the same as option in [section].\n Options (config file lines)");
@@ -63,6 +66,7 @@ struct config_parameters
 				("cheapseq.mutations_file", boost::program_options::value<string>(&mutations_file), "output file with mutations that we generated and coded in reads")
 				("cheapseq.random_seed_1", boost::program_options::value<unsigned int>(&random_seed_1), "random seed 1 for cheap sequencing")
 				("cheapseq.random_seed_2", boost::program_options::value<unsigned int>(&random_seed_2), "random seed 2 for cheap sequencing")
+				("cheapseq.random_state_file", boost::program_options::value<string>(&random_state_file), "random generator state file;\nthe state is read from the file on start\nand it is saved to the file on finish;\nif the option is given and the file exists,\nthe random_seed options are not used")
 		;
 
 		try { 
@@ -115,6 +119,7 @@ ostream & operator<< (ostream & os, const config_parameters & cp)
 	//	os<<"random_seed_1"<<"="<<cp.noiser_random_seed_1<<endl;
 	//	os<<"random_seed_2"<<"="<<cp.noiser_random_seed_2<<endl;
 	//}
+	os<<"random_state_file"<<"="<<cp.random_state_file<<endl;
 	return os;
 }
 

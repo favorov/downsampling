@@ -1,6 +1,6 @@
 [cheapseq]
 #fasta_file=chr9.fa
-fasta_file=chr1y.fa.gz
+fasta_file=chr1_gl000192_random.fa.gz
 chromosome_name=chr1_gl000192_random
 bases_per_snv=1000
 read_length=100

@@ -43,12 +43,32 @@ int main(int argc, char ** argv)
 		config_parameters config(argc,argv);
 
 		cout<<config;
-		
-		std::vector<unsigned long> iniseed(2);
-		iniseed[0]=config.random_seed_1;
-		iniseed[1]=config.random_seed_2;
-		boost::random::seed_seq iniseedseq(iniseed);
-		gen.seed(iniseedseq);
+
+		bool to_seed=true;
+
+		if (config.random_state_file!="")
+		{
+			ifstream gen_init_load(config.random_state_file.c_str());
+			if (!gen_init_load.good()) 
+			{
+				cout<<"Cannot open random generator state file for read. Seeding.\n"<<flush;
+			}
+			else 
+			{
+				gen_init_load>>gen;
+				gen_init_load.close();
+				to_seed=false;
+				cout<<"Reading random generator state from file.\n"<<flush;
+			}
+		}
+		if (to_seed)
+		{
+			std::vector<unsigned long> iniseed(2);
+			iniseed[0]=config.random_seed_1;
+			iniseed[1]=config.random_seed_2;
+			boost::random::seed_seq iniseedseq(iniseed);
+			gen.seed(iniseedseq);
+		}
 
 		SequencesPile sp;
 
@@ -205,6 +225,14 @@ int main(int argc, char ** argv)
 		//o.open("mutss");
 		//copy(mumus.begin(), mumus.end(), std::ostream_iterator<mutation>(o, ""));
 		//o.close();
+		if (config.random_state_file!="")
+		{
+			cout<<"Saving random generator state to file.\n"<<flush;
+			ofstream gen_init_save(config.random_state_file.c_str());
+			if (!gen_init_save.good()) {throw * new IOStreamException("Cannot open random generator state file for write.\n");}
+			gen_init_save<<gen;
+			gen_init_save.close();
+		}
 	} catch (DumbException & e) {cout<<e;return 1;}
 
 	return 0;
