@@ -28,6 +28,7 @@ int main(int argc, char ** argv)
 	unsigned int min_read_length;
 	unsigned int random_seed_1;
 	unsigned int random_seed_2;
+	string random_state_file;
 	boost::program_options::options_description desc
 			("downSAM: reads SAM, outputs SAM.\n Detects reads by mean_read_length length sunstring of [ATGCatgc].\n Output only part of them, on random. All other line are outputed as-is. \n Command-line options override config file;\n   section.option is the same as option in [section].\n Options (config file lines)");
 	desc.add_options()
@@ -37,6 +38,7 @@ int main(int argc, char ** argv)
 			("downSAM.min_read_length", boost::program_options::value<unsigned int>(&min_read_length)->default_value(30), "minimal length of read, to detect reads by [ATGCatgc]{min_read_length} regex")
 			("downSAM.random_seed_1", boost::program_options::value<unsigned int>(&random_seed_1)->default_value(DSEED_1), "random seed 1 for noiser")
 			("downSAM.random_seed_2", boost::program_options::value<unsigned int>(&random_seed_2)->default_value(DSEED_2), "random seed 2 for noiser")
+			("downSAM.random_state_file", boost::program_options::value<string>(&random_state_file), "random generator state file;\nthe state is read from the file on start\nand it is saved to the file on finish;\nif the option is given and the file exists,\nthe random_seed options are not used")
 	;
 	try { 
 		boost::program_options::positional_options_description pd; 
@@ -47,7 +49,7 @@ int main(int argc, char ** argv)
 		//boost::program_options::notify(vm);
 
 		if (vm.count("help")) {
-			cout << desc << "\n";
+			cerr << desc << "\n";
 			return 0;
 		}
 
@@ -56,7 +58,7 @@ int main(int argc, char ** argv)
 			ifstream conf(vm["config-file"].as<string>().c_str());
 			if (!conf)
 			{
-				cout<<"File \""<<vm["config-file"].as<string>().c_str()<<"\" cannot be opened for read.\n";
+				cerr<<"File \""<<vm["config-file"].as<string>().c_str()<<"\" cannot be opened for read.\n";
 				return 1;
 			}
 			boost::program_options::store(boost::program_options::parse_config_file(conf, desc, true), vm);
@@ -66,14 +68,29 @@ int main(int argc, char ** argv)
 	
 	} catch( const exception& e)
 	{
-			cout<<e.what()<<endl<<desc<<endl;
+			cerr<<e.what()<<endl<<desc<<endl;
 	}
 
-	std::vector<unsigned long> iniseed(2);
-	iniseed[0]=random_seed_1;
-	iniseed[1]=random_seed_2;
-	boost::random::seed_seq iniseedseq(iniseed);
-	gen.seed(iniseedseq);
+	bool to_seed=true;
+
+	if (random_state_file!="")
+	{
+		ifstream gen_init_load(random_state_file.c_str());
+		if (gen_init_load.good()) 
+		{
+			gen_init_load>>gen;
+			gen_init_load.close();
+			to_seed=false;
+		}
+	}
+	if (to_seed)
+	{
+		std::vector<unsigned long> iniseed(2);
+		iniseed[0]=random_seed_1;
+		iniseed[1]=random_seed_2;
+		boost::random::seed_seq iniseedseq(iniseed);
+		gen.seed(iniseedseq);
+	}
 
 	boost::random::uniform_int_distribution<unsigned int> to_read_or_not_to_read(0,one_from_reads-1);
 	string current_string;
@@ -98,5 +115,12 @@ int main(int argc, char ** argv)
 			cout<<current_string<<endl;
 	}
 
+	if (random_state_file!="")
+	{
+		ofstream gen_init_save(random_state_file.c_str());
+		if (!gen_init_save.good()) {cerr<<"Cannot open random generator state file for write.\n";}
+		gen_init_save<<gen;
+		gen_init_save.close();
+	}
 
 }
