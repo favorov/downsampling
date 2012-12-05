@@ -28,6 +28,7 @@ int main(int argc, char ** argv)
 	unsigned int bases_per_error;
 	unsigned int random_seed_1;
 	unsigned int random_seed_2;
+	string random_state_file;
 	boost::program_options::options_description desc
 			("Noiser: adds noise to FastA/Q, outputs Fasta.\nNoise is uniformaly distributed random bases.\n   Command-line options override config file;\n   section.option is the same as option in [section].\n Options (config file lines)");
 	desc.add_options()
@@ -36,6 +37,7 @@ int main(int argc, char ** argv)
 			("noiser.bases_per_error", boost::program_options::value<unsigned int>(&bases_per_error)->default_value(0), "one noise error is expected per this number of bases; defaut is no noise")
 			("noiser.random_seed_1", boost::program_options::value<unsigned int>(&random_seed_1)->default_value(NSEED_1), "random seed 1 for noiser")
 			("noiser.random_seed_2", boost::program_options::value<unsigned int>(&random_seed_2)->default_value(NSEED_2), "random seed 2 for noiser")
+			("noiser.random_state_file", boost::program_options::value<string>(&random_state_file), "random generator state file;\nthe state is read from the file on start\nand it is saved to the file on finish;\nif the option is given and the file exists,\nthe random_seed options are not used")
 	;
 	try { 
 		boost::program_options::positional_options_description pd; 
@@ -46,7 +48,7 @@ int main(int argc, char ** argv)
 		//boost::program_options::notify(vm);
 
 		if (vm.count("help")) {
-			cout << desc << "\n";
+			cerr << desc << "\n";
 			return 0;	
 		}
 
@@ -55,7 +57,7 @@ int main(int argc, char ** argv)
 			ifstream conf(vm["config-file"].as<string>().c_str());
 			if (!conf)
 			{
-				cout<<"File \""<<vm["config-file"].as<string>().c_str()<<"\" cannot be opened for read.\n";
+				cerr<<"File \""<<vm["config-file"].as<string>().c_str()<<"\" cannot be opened for read.\n";
 				return 1;
 			}
 			boost::program_options::store(boost::program_options::parse_config_file(conf, desc, true), vm);
@@ -65,14 +67,29 @@ int main(int argc, char ** argv)
 	
 	} catch( const exception& e)
 	{
-			cout<<e.what()<<endl<<desc<<endl;
+			cerr<<e.what()<<endl<<desc<<endl;
 	}
 
-	std::vector<unsigned long> iniseed(2);
-	iniseed[0]=random_seed_1;
-	iniseed[1]=random_seed_2;
-	boost::random::seed_seq iniseedseq(iniseed);
-	gen.seed(iniseedseq);
+	bool to_seed=true;
+
+	if (random_state_file!="")
+	{
+		ifstream gen_init_load(random_state_file.c_str());
+		if (gen_init_load.good()) 
+		{
+			gen_init_load>>gen;
+			gen_init_load.close();
+			to_seed=false;
+		}
+	}
+	if (to_seed)
+	{
+		std::vector<unsigned long> iniseed(2);
+		iniseed[0]=random_seed_1;
+		iniseed[1]=random_seed_2;
+		boost::random::seed_seq iniseedseq(iniseed);
+		gen.seed(iniseedseq);
+	}
 
 	boost::random::uniform_int_distribution<unsigned int> dist_error_prob(0,bases_per_error-1);
 	boost::random::uniform_int_distribution<unsigned int> error_base(0,3);
@@ -106,14 +123,14 @@ int main(int argc, char ** argv)
 			in_fasta_block=true;
 			continue;
 		}
-		if (in_fasta_block)
+		if (in_fasta_block && in_block_counter==0) //actually, it means that we are in sequence of usual FASTA rather than FASTQ
 		{
 			if (bases_per_error)
-				for (size_t pos=0;pos<=current_string.length();pos++)
+				for (size_t index=0;index<=current_string.length();index++)
 					if (!dist_error_prob(gen)) //error prob
 					{
-						current_string[pos]=atgc[error_base(gen)];
-						seq_id=seq_id+"%"+boost::lexical_cast<string>(pos);
+						current_string[index]=atgc[error_base(gen)];
+						seq_id=seq_id+"%"+boost::lexical_cast<string>(index+1);
 					}
 			cout << seq_id <<endl<<current_string << endl;
 			in_fasta_block=false;
@@ -127,14 +144,14 @@ int main(int argc, char ** argv)
 			in_block_counter=1;
 			continue;
 		}
-		if (in_fastq_block && in_block_counter==1)
+		if (in_fastq_block && in_block_counter==1) //FASTQ
 		{
 			if (bases_per_error)
-				for (size_t pos=0;pos<=current_string.length();pos++)
+				for (size_t index=0;index<=current_string.length();index++)
 					if (!dist_error_prob(gen)) //error prob
 					{
-						current_string[pos]=atgc[error_base(gen)];
-						seq_id=seq_id+"%"+boost::lexical_cast<string>(pos);
+						current_string[index]=atgc[error_base(gen)];
+						seq_id=seq_id+"%"+boost::lexical_cast<string>(index+1);
 					}
 			in_block_counter=2;
 			cout << seq_id <<endl<<current_string << endl;
@@ -157,5 +174,12 @@ int main(int argc, char ** argv)
 		return 1;
 	}
 
+	if (random_state_file!="")
+	{
+		ofstream gen_init_save(random_state_file.c_str());
+		if (!gen_init_save.good()) {cerr<<"Cannot open random generator state file for write.\n";}
+		gen_init_save<<gen;
+		gen_init_save.close();
+	}
 
 }
