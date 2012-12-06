@@ -96,17 +96,46 @@ int main(int argc, char ** argv)
 	string current_string;
 	
 	string read_regex_string="^.+[ATGCatgc]{"+boost::lexical_cast<string>(min_read_length)+",}.+$";
-
+	string PG_regex_string="^@PG.*$";
+	
+	boost::regex read_signat(read_regex_string);
+	boost::regex PG_signat(PG_regex_string);
+	
+	bool PG_written=false,PG_writing=false;
 	//cerr<<read_regex_string<<endl;
 
-	boost::regex read_signat(read_regex_string);
+
 	while (!cin.eof())
 	{
 		getline(cin, current_string);
 		boost::trim(current_string);
+		if (!PG_written)
+		{
+			//we care about @PG only once
+			if( boost::regex_match(current_string, PG_signat))
+			{
+				cout<<current_string<<endl;
+				PG_writing=true;
+				//we started @PG output
+				continue;
+			}
+			else
+			{
+				if(PG_writing) //so, the PG module is finished right now
+				{
+					cout<<"@PG\tID:downSAM\tVN:1.0.1\tCL:\"downSAM --downSAM.one_from_reads "<<one_from_reads<<" --downSAM.min_read_length "<<min_read_length<<"\""<<endl; //wrote our @PG signature
+					PG_writing=false;
+					PG_written=true;
+					//we finished @PG output, the string we read goes further
+				}
+				//else, we do nothing: it is not @PG-related situation, if it does not match read_signat, it will be printed later
+			}
+
+		}
 		if( boost::regex_match(current_string, read_signat))
 		//read
 		{
+			PG_written=true; // @PG is header, if a read is read, the header is over
 			if (! to_read_or_not_to_read(gen))
 				cout<<current_string<<endl;
 		}
