@@ -14,6 +14,6 @@ random_seed_2=1436111
 [pipeline]
 sample_id=chr1_gl000192_random-cheapseq-100-100
 bowtie_index_base=chr1_gl000192_random
+downsample_schedule=1,2,5,10,20,50,100
 random_state_file=randomstate.rnd
 #we will pass it to others by commandline
-downsamples=1,2,5,10,20,50,100

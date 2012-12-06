@@ -6,15 +6,20 @@
 use strict;
 
 sub unlink_first_if_it_is_older($$);
+sub downsampled_alignment_file_name($$);
+sub repeat_file_name($$);
 
 my $cheapseq_folder="../cheapseq";
+my $downSAM_folder="../downSAM";
 my $report2vcf_folder=$cheapseq_folder;
 my $bowtie_folder="../../tools-src/bowtie/src/bowtie-0.12.8";
 my $samtools_folder="../../tools-src/samtools/samtools-0.1.18";
 my $bcftools_folder="$samtools_folder/bcftools";
 my $vcftools_folder="../../tools-src/vcftools/vcftools/cpp";
 my $bgzip_folder="../../tools-src/tabix/tabix-0.2.6";
+my $results_folder="results";
 
+mkdir $results_folder if (! -d $results_folder);
 
 my $argc = @ARGV;
 
@@ -55,6 +60,8 @@ open( CONFIG, $cfile_name ) or print "Can't open config file $cfile_name. Error 
 
 my ($fasta_file, $sample_id, $mutations_file, $reads_file, $bowtie_index_base);
 
+my @downsample_schedule;
+
 while (<CONFIG>) {
 	chomp;
 	s/\r//g;
@@ -69,8 +76,19 @@ while (<CONFIG>) {
 	$reads_file = $line[1] if $line[0] eq 'reads_file';
 	$mutations_file = $line[1] if $line[0] eq 'mutations_file';
 	$bowtie_index_base= $line[1] if $line[0] eq 'bowtie_index_base';
+	if ($line[0] eq 'downsample_schedule')
+	{
+		@downsample_schedule=split ',|;',$line[1];
+		for (my $i=0;$i<=$#downsample_schedule;$i++)
+		{
+			die "Noniteger in downsample_schedule: $downsample_schedule[$i].\n" if ($downsample_schedule[$i] !~ /^\d+$/);
+			print downsampled_alignment_file_name($mutations_file,$downsample_schedule[$i]),"\n";
+			print repeat_file_name(downsampled_alignment_file_name($mutations_file,$downsample_schedule[$i]),12),"\n";
+		}
+	}
 }
 
+exit;
 print "#Random coverage mutatition test pipeline. Config file is $ARGV[0], sample id is $sample_id.\n";
 
 if (! -e $mutations_file || ! -e $reads_file) 
@@ -208,3 +226,14 @@ sub unlink_first_if_it_is_older($$)
 	unlink $vcf_mutations_file if $vcf_write_secs<$mut_write_secs;
 }
 
+sub downsampled_alignment_file_name($$)
+{
+	my ($namebase,$sampling_rate)=@_;
+	return $namebase."_down_by_".$sampling_rate;
+}
+
+sub repeat_file_name ($$)
+{
+	my ($namebase,$repeat)=@_;
+	return $namebase."_rep_".$repeat;
+}
