@@ -355,7 +355,7 @@ else
 
 		for (my $rep=1; $rep<=$downsample_replica; $rep++)
 		{
-			my $alingment_file_name_local=repeat_file_name(downsampled_file_name($mutations_file,$downmult),$rep);
+			my $alingment_file_name_local=repeat_file_name(downsampled_file_name($sample_id,$downmult),$rep);
 			print "##Downsampling ratio $downmult, replica $rep .\n";
 			if ( -e $alingment_file_name_local.".bam")
 			{
