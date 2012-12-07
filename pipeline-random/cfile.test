@@ -4,7 +4,8 @@ fasta_file=chr1_gl000192_random.fa.gz
 chromosome_name=chr1_gl000192_random
 bases_per_snv=1000
 read_length=100
-coverage=200
+coverage=100
+#these two actually will be neglected, if they are given, we will make symbolic links to them
 mutations_file=chr1_gl000192.mutations
 reads_file=chr1_gl000192.reads
 #the last two numbers are read len and bases_per_svn
@@ -12,8 +13,11 @@ random_seed_1=1248312
 random_seed_2=1436111
 
 [pipeline]
-sample_id=chr1_gl000192_random-cheapseq-100-100
-bowtie_index_base=chr1_gl000192_random
-downsample_schedule=1,2,5,10,20,50,100
+sample_id=chr1_gl000192_random-cheapseq
+#bowtie_index_base=chr1_gl000192_random
+#downsample_schedule=1,2,5,10,20,50,100,200
+#downsample_replicas=50
+downsample_schedule=1,5
+downsample_replica=5
 random_state_file=randomstate.rnd
 #we will pass it to others by commandline
