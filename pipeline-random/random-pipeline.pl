@@ -357,7 +357,7 @@ else
 		{
 			my $alingment_file_name_local=repeat_file_name(downsampled_file_name($mutations_file,$downmult),$rep);
 			print "##Downsampling ratio $downmult, replica $rep .\n";
-			if ( -e $alingment_file_name.".bam")
+			if ( -e $alingment_file_name_local.".bam")
 			{
 				unlink_first_if_it_is_older($alingment_file_name_local.".bam",$alingment_file_name.".sam");
 				#vcf is to be younger
@@ -374,7 +374,7 @@ else
 				print "##Downsampled alignment already exists.\n"
 			}
 
-			if ( -e $alingment_file_name.".vcf.gz")
+			if ( -e $alingment_file_name_local.".vcf.gz")
 			{
 				unlink_first_if_it_is_older($alingment_file_name_local.".vcf.gz",$alingment_file_name_local.".bam");
 				#vcf is to be younger
@@ -398,8 +398,7 @@ else
 				print "#Basecalling is already done.\n";
 			}
 			print("#Calculate differences ...");
-			system("$vcftools_folder/vcftools --gzdiff $vcf_mutations_file.gz --gzvcf $alingment_file_name_local.vcf.gz --out $results_folder/$alingment_file_name > /dev/null") == 0 or die ("vcftools gzdiff failed: $?\n");
-		#	system("$vcftools_folder/vcftools --gzdiff $vcf_mutations_file.gz --gzvcf $alingment_file_name.vcf.gz --diff-site-discordance --out $alingment_file_name.diff");
+			system("$vcftools_folder/vcftools --gzdiff $vcf_mutations_file.gz --gzvcf $alingment_file_name_local.vcf.gz --out $results_folder/$alingment_file_name_local > /dev/null") == 0 or die ("vcftools gzdiff failed: $?\n");
 			print(" done.\n");
 		}
 	}
