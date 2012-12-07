@@ -88,6 +88,10 @@ my ($mut_bases_per_snv,$read_length,$coverage);
 
 my @downsample_schedule;
 
+my $downsample_schedule_is_nontrivial=0;
+
+my $one_is_in_downsample_schedule=0;
+
 while (<CONFIG>) {
 	chomp;
 	s/\r//g;
@@ -105,18 +109,31 @@ while (<CONFIG>) {
 	$reads_file = $line[1] if $line[0] eq 'reads_file';
 	$mutations_file = $line[1] if $line[0] eq 'mutations_file';
 	$bowtie_index_base= $line[1] if $line[0] eq 'bowtie_index_base';
+	$downsample_replica= $line[1] if $line[0] eq 'downsample_replica';
 	if ($line[0] eq 'downsample_schedule')
 	{
 		@downsample_schedule=split ',|;',$line[1];
 		for (my $i=0;$i<=$#downsample_schedule;$i++)
 		{
-			die "Noniteger in downsample_schedule: $downsample_schedule[$i].\n" if ($downsample_schedule[$i] !~ /^\d+$/);
+			die "Noniteger in downsample_schedule: $downsample_schedule[$i].\n" if not isnatural $downsample_schedule[$i];
+			if ($downsample_schedule[$i]!=1)
+			{
+				$downsample_schedule_is_nontrivial=1
+			}
+			else #=1
+			{
+				$one_is_in_downsample_schedule=1
+			}
 		}
 	}
 }
 close CONFIG;
 
 #process config
+
+push(@downsample_schedule,1) if not $one_is_in_downsample_schedule;
+#1 means to basecall on full set, no downsampling.
+#we need it - still, it is not processed in the cycle.
 
 print "I cannot work without fasta filename.\n" and exit unless defined $fasta_file;
 print "The fasta file $fasta_file is bot readable.\n" and exit unless -r $fasta_file;
@@ -184,12 +201,13 @@ $reads_file_link = $reads_file if defined $reads_file;
 
 $mutations_file="$sample_id.mutations";
 $reads_file="$sample_id.reads";
+$random_state_file="$sample_id.rnd""
 
 print "#Random coverage mutation test pipeline started. Config file is $ARGV[0], sample id is $sample_id.\n";
 if (! -e $mutations_file || ! -e $reads_file) 
 {
-	unlink "$sample_id.rnd";
-	my $cheapseq_string="$cheapseq_folder/cheapseq --cheapseq.reads_file $reads_file --cheapseq.mutations_file $mutations_file --cheapseq.random_state_file $sample_id.rnd $cfile_name";
+	unlink $random_state_file;
+	my $cheapseq_string="$cheapseq_folder/cheapseq --cheapseq.reads_file $reads_file --cheapseq.mutations_file $mutations_file --cheapseq.random_state_file $random_state_file $cfile_name";
 	print "#Start cheapseq...\n";
 	system($cheapseq_string) == 0 or die ("Cheapseq start failed: $?\n");
 	print "#Finished (cheapseq) ...\n";
@@ -253,10 +271,10 @@ if (!
 	{
 		print "#Gzipped FASTA\n";
 		$fasta_ungzipped_file=substr $fasta_file, 0 , -3;
-		system "gzip -dc $fasta_file > $fasta_ungzipped_file";
+		system "gzip -dc $fasta_file > $fasta_ungzipped_file" or die ("Unzipping start failed: $?\n");
 		print "#unGzipped ...\n";
-		system("$bowtie_folder/bowtie-build $fasta_ungzipped_file $bowtie_index_base");
 	}
+	system("$bowtie_folder/bowtie-build $fasta_ungzipped_file $bowtie_index_base") or die ("Fasta index build failed: $?\n");
 	if ($gzipped)
 	{
 		unlink $fasta_ungzipped_file;
@@ -285,23 +303,20 @@ else
 
 		print("#Aligning reads with Bowtie\n");
 		#./bowtie -S -v 2 -m 1 --un unmapped.tests.sam -f chr1_gl000192_random reads.test --sam-RG SM:quasiburroed 2> bowtie.log.test.sam | ./samtools view -Sbh -   >  mapped.test.bam
-		system("$bowtie_folder/bowtie -S -v 2 -m 1 --un $alingment_file_name.unmapped --sam-RG SM:$sample_id -f $bowtie_index_base $reads_file 2> bowtie.$alingment_file_name.log > $alingment_file_name.sam");
+		system("$bowtie_folder/bowtie -S -v 2 -m 1 --un $alingment_file_name.unmapped --sam-RG SM:$sample_id -f $bowtie_index_base $reads_file 2> bowtie.$alingment_file_name.log > $alingment_file_name.sam") or die ("Bowtie failed: $?\n") ;
 		print("#sam->bam\n");
-		system("$samtools_folder/samtools view -Sbh $alingment_file_name.sam > $alingment_file_name.bam");
+		system("$samtools_folder/samtools view -Sbh $alingment_file_name.sam > $alingment_file_name.bam") or die ("Samtools sam->bam failed: $?\n") ;
 		print "#Finished (alignment) ...\n";
-		unlink "$alingment_file_name.sam";
+		unlink "$alingment_file_name.sam" if ! $downsample_schedule_is_nontrivial;
+		#we are going to sample from this sam, so what for to kill it?
 	}
 	else
 	{
 		print "#Alignment is already build.\n";
 	}
 
-
-	#here, the downsample cycle starts
-	#file name standards:
-	#downsampled_file_name($mutations_file,$downsample_schedule[$i]),"\n";
-	#repeat_file_name(downsampled_file_name($mutations_file,$downsample_schedule[$i]),12),"\n";
-
+	
+	
 	if ( -e $alingment_file_name.".vcf.gz")
 	{
 		unlink_first_if_it_is_older($alingment_file_name.".vcf.gz",$alingment_file_name.".bam");
@@ -310,9 +325,9 @@ else
 	if ( ! -e $alingment_file_name.".vcf.gz")
 	{
 		print("#Make basecalling\n");
-		system("$samtools_folder/samtools mpileup -uf $fasta_file $alingment_file_name.bam > $alingment_file_name.pileup");
+		system("$samtools_folder/samtools mpileup -uf $fasta_file $alingment_file_name.bam > $alingment_file_name.pileup") or die ("samtools mpileup failed: $?\n");
 		print("#pileup->vcf\n");
-		system("$bcftools_folder/bcftools view -cvg $alingment_file_name.pileup | $bgzip_folder/bgzip > $alingment_file_name.vcf.gz");
+		system("$bcftools_folder/bcftools view -cvg $alingment_file_name.pileup | $bgzip_folder/bgzip > $alingment_file_name.vcf.gz") or die ("pileup->bcf failed: $?\n");
 		print "#Finished (basecalling) ...\n";
 		unlink "$alingment_file_name.pileup"
 		#vcf only
@@ -326,9 +341,69 @@ else
 		print "#Basecalling is already done.\n";
 	}
 	print("#Calculate differences ...");
-	system("$vcftools_folder/vcftools --gzdiff $vcf_mutations_file.gz --gzvcf $alingment_file_name.vcf.gz --out $results_folder/$alingment_file_name > /dev/null");
+	system("$vcftools_folder/vcftools --gzdiff $vcf_mutations_file.gz --gzvcf $alingment_file_name.vcf.gz --out $results_folder/$alingment_file_name > /dev/null") or die ("vcftools gzdiff failed: $?\n");
 #	system("$vcftools_folder/vcftools --gzdiff $vcf_mutations_file.gz --gzvcf $alingment_file_name.vcf.gz --diff-site-discordance --out $alingment_file_name.diff");
 	print(" done.\n");
+
+	#here, the downsample cycle starts
+	#file name standards:
+	#downsampled_file_name($mutations_file,$downsample_schedule[$i]),"\n";
+	#repeat_file_name(downsampled_file_name($mutations_file,$downsample_schedule[$i]),12),"\n";
+	foreach my $downmult @downsample_schedule
+	{
+		next if $downmult==1; #we did it once already
+
+		for (my $rep=1; $rep<=$downsample_replica; $rep++)
+		{
+			my $alingment_file_name_local=repeat_file_name(downsampled_file_name($mutations_file,$downmult),$rep);
+			print "##Downsampling ratio $downmult, replica $rep .\n";
+			if ( -e $alingment_file_name.".bam")
+			{
+				unlink_first_if_it_is_older($alingment_file_name_local.".bam",$alingment_file_name.".sam");
+				#vcf is to be younger
+			}
+			if ( ! -e $alingment_file_name_local.".bam")
+			{
+				print "##DownSAMpling.... ";
+				my $downSAM_string="$downSAM_folder/downSAM --downSAM.one_from_reads $downmult --downSAM.random_state_file $random_state_file < $alingment_file_name.sam | $samtools_folder/samtools view -Sbh -  >  $alingment_file_name_local.bam ";
+				system($downSAM_string) or die ("Downsampling failed: $?\n");
+				print "done.\n";
+			}
+			else
+			{
+				print "##Downsampled alignment already exists.\n"
+			}
+
+			if ( -e $alingment_file_name.".vcf.gz")
+			{
+				unlink_first_if_it_is_older($alingment_file_name_local.".vcf.gz",$alingment_file_name_local.".bam");
+				#vcf is to be younger
+			}
+			if ( ! -e $alingment_file_name_local.".vcf.gz")
+			{
+				print("##Make basecalling\n");
+				system("$samtools_folder/samtools mpileup -uf $fasta_file $alingment_file_name_local.bam > $alingment_file_name_local.pileup") or die ("samtools mpileup failed: $?\n");
+				print("##pileup->vcf\n");
+				system("$bcftools_folder/bcftools view -cvg $alingment_file_name_local.pileup | $bgzip_folder/bgzip > $alingment_file_name_local.vcf.gz")  or die ("pileup->bcf failed: $?\n");
+				print "##Finished (basecalling) ...\n";
+				unlink "$alingment_file_name_local.pileup"
+				#vcf only
+				#./samtools mpileup -uf chr1_gl000192_random.fa.gz buegyrshlopak.bam | ./bcftools view -cvg - > mapped.calls-bue.vcf 
+				#vcf and bcf 
+				#./samtools mpileup -uf chr1_gl000192_random.fa.gz buegyrshlopak.bam | ./bcftools view -bcvg - > mapped.calls-bue.bcf 
+				#./bcftools view mapped.calls-bue.bcf > mapped.calls-bue.vcf
+			}
+			else
+			{
+				print "#Basecalling is already done.\n";
+			}
+			print("#Calculate differences ...");
+			system("$vcftools_folder/vcftools --gzdiff $vcf_mutations_file.gz --gzvcf $alingment_file_name_local.vcf.gz --out $results_folder/$alingment_file_name > /dev/null") or die ("vcftools gzdiff failed: $?\n");
+		#	system("$vcftools_folder/vcftools --gzdiff $vcf_mutations_file.gz --gzvcf $alingment_file_name.vcf.gz --diff-site-discordance --out $alingment_file_name.diff");
+			print(" done.\n");
+		}
+	}
+	print "All done\n";
 }
 
 
