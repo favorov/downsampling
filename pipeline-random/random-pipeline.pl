@@ -182,14 +182,14 @@ my ($mutations_file_link,$reads_file_link);
 $mutations_file_link= $mutations_file if defined $mutations_file;
 $reads_file_link = $reads_file if defined $reads_file;
 
-$mutations_file=$sample_id."mutations";
-$reads_file=$sample_id."reads";
+$mutations_file="$sample_id.mutations";
+$reads_file="$sample_id.reads";
 
 print "#Random coverage mutation test pipeline started. Config file is $ARGV[0], sample id is $sample_id.\n";
 if (! -e $mutations_file || ! -e $reads_file) 
 {
 	unlink "$sample_id.rnd";
-	my $cheapseq_string="$cheapseq_folder/cheapseq --cheapseq.read_file $read_file --cheapseq.mutations_file $mutations_file --random_state_file $sample_id.rnd";
+	my $cheapseq_string="$cheapseq_folder/cheapseq --cheapseq.reads_file $reads_file --cheapseq.mutations_file $mutations_file --cheapseq.random_state_file $sample_id.rnd $cfile_name";
 	print "#Start cheapseq...\n";
 	system($cheapseq_string) == 0 or die ("Cheapseq start failed: $?\n");
 	print "#Finished (cheapseq) ...\n";
@@ -220,7 +220,7 @@ if ( -e $vcf_mutations_file )
 if ( ! -e $vcf_mutations_file ) 
 {
 	#my $report2vcf_string="perl -I $report2vcf_folder $report2vcf_folder."/report2vcf.pl";
-	my $report2vcf_string="perl -I $report2vcf_folder $report2vcf_folder/report2vcf.pl $cfile_name | $bgzip_folder/bgzip > $vcf_mutations_file.gz";
+	my $report2vcf_string="perl -I $report2vcf_folder $report2vcf_folder/report2vcf.pl $mutations_file | $bgzip_folder/bgzip > $vcf_mutations_file.gz";
 	print "#Start report->vcf...\n";
 	system($report2vcf_string) == 0 or die ("Report2vcf.pl start failed: $?\n");
 	print "#Finished (report->vcf) ...\n";
@@ -274,7 +274,7 @@ else
 # here, we will start the internal cycles of the pipeline. It can be a cycle, do now we just include it in {}
 
 {
-	$alingment_file_name=$sample_id;
+	my $alingment_file_name=$sample_id;
 	if ( -e $alingment_file_name.".bam")
 	{
 		unlink_first_if_it_is_older($alingment_file_name.".bam",$reads_file);
@@ -293,7 +293,7 @@ else
 	}
 	else
 	{
-		print "#Aligning is already build.\n";
+		print "#Alignment is already build.\n";
 	}
 
 

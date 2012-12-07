@@ -8,17 +8,17 @@ use vcftools_pm::Vcf;
 
 my $argc = @ARGV;
 
-print "\nreport2vcf.pl converts the mutation report that was genarated by cheapseq to vcf format.\n
-Usage: perl report2vcf config-file\n" and exit if ($argc!=1); 
+print STDERR "\nreport2vcf.pl converts the mutation report that was genarated by cheapseq to vcf format.\n
+Usage: perl report2vcf mutations_file [sample_id]\n" and exit if ($argc!=1); 
 
 print "\nreport2vcf.pl converts the mutation report that was genarated by cheapseq to vcf format.\n
-Usage: perl report2vcf config-file\n
-understands two lines:
-mutations_file = mutations-file-name
-sample_id = name-of-sample\n\n
+Usage: perl report2vcf mutations-file sample_id\n
+mutations-file is obligatory 
+sample_id is optional is mutations-file has format something.mutations, sample_id will be something\n\n
 " and exit if 
 (
-	$argc==1 and 
+	(
+		$argc==1 and 
 		(
 			$ARGV[0] eq '--help'
 			||
@@ -28,28 +28,35 @@ sample_id = name-of-sample\n\n
 			||
 			$ARGV[0] eq '-help'
 		)
+	)
+	or $argc==0
+	or $argc>2 
 );
 
-open( CONFIG, $ARGV[0] ) or print "Can't open config file $ARGV[0]: $!\n" and exit;
+my $mutations_file = $ARGV[0];
 
-my ($sample_id,$mutations_file);
+my $sample_id;
 
-while (<CONFIG>) {
-	chomp;
-	s/\r//g;
-	next if /^#/;
-	my @line = split("=");
-	$line[0] = "" if not defined $line[0];
-	$line[1] = "" if not defined $line[1];
-
-	#	print "\'$line[0]\' = \'$line[1]\'\n";
-	$sample_id     				= $line[1] if $line[0] eq 'sample_id';
-	$mutations_file = $line[1] if $line[0] eq 'mutations_file';
+if ($argc==2)
+{
+	$sample_id=$ARGV[1];
 }
+else
+{
+	if ($mutations_file=~/^(.+)\.mutations$/)
+	{
+		$sample_id=$1;
+	}
+	else
+	{
+		print STDERR "Cannot get sample_id from parameters.\n";
+		exit;
+	}
+}
+;
 
-close CONFIG;
 
-open( MUTAT, $mutations_file) or print "Can't open mutations file $mutations_file: $!\n" and exit;
+open( MUTAT, $mutations_file) or print STDERR "Can't open mutations file $mutations_file: $!\n" and exit;
 
 my $vcf_out = Vcf->new();
 $vcf_out->add_columns($sample_id);
