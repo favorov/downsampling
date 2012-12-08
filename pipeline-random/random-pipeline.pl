@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w 
 #****************************************************************************
 #mutation-call-by-coverage
-#$Id: cheapseq.cpp 1810 2012-11-14 23:48:38Z favorov $
+#$Id$
 #****************************************************************************
 # File name system: the work foder is where everything but the results is.
 # the results folder is for results
