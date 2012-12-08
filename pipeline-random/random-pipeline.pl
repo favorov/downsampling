@@ -16,6 +16,7 @@ sub downsampled_file_name($$);
 sub repeat_file_name($$);
 sub isnumber($);
 sub isnatural($);
+sub interpret_log($$$$);
 
 my $cheapseq_folder="../cheapseq";
 my $downSAM_folder="../downSAM";
@@ -62,7 +63,7 @@ the sample_name and it lives in the results folder.
 
 If we wave a downasmple schedule (like downsample_schedule=1,2,5 - the denominators for reads number), 
 we sample the reads file according to it and repeat alignment+basecalling.
-The number of downsample cycles is downsample_replica. 
+The number of downsample cycles is downsample_replicas. 
 
 Then, we conbine all the numbers of found SNP's 
 \n\n
@@ -84,7 +85,7 @@ my $cfile_name=$ARGV[0];
 
 open( CONFIG, $cfile_name ) or print "Can't open config file $cfile_name. Error is  '$!' \n" and exit;
 
-my ($fasta_file, $sample_id, $mutations_file, $reads_file, $bowtie_index_base, $downsample_replica, $random_state_file);
+my ($fasta_file, $sample_id, $mutations_file, $reads_file, $bowtie_index_base, $downsample_replicas, $random_state_file, $report_name);
 
 my ($mut_bases_per_snv,$read_length,$coverage); 
 
@@ -111,8 +112,9 @@ while (<CONFIG>) {
 	$reads_file = $line[1] if $line[0] eq 'reads_file';
 	$mutations_file = $line[1] if $line[0] eq 'mutations_file';
 	$bowtie_index_base = $line[1] if $line[0] eq 'bowtie_index_base';
-	$downsample_replica = $line[1] if $line[0] eq 'downsample_replica';
+	$downsample_replicas = $line[1] if $line[0] eq 'downsample_replicas';
 	$random_state_file  = $line[1] if $line[0] eq 'random_state_file';
+	$report_name  = $line[1] if $line[0] eq 'report_name';
 	if ($line[0] eq 'downsample_schedule')
 	{
 		@downsample_schedule=split ',|;',$line[1];
@@ -356,7 +358,7 @@ else
 	{
 		next if $downmult==1; #we did it once already
 
-		for (my $rep=1; $rep<=$downsample_replica; $rep++)
+		for (my $rep=1; $rep<=$downsample_replicas; $rep++)
 		{
 			my $alingment_file_name_local=repeat_file_name(downsampled_file_name($sample_id,$downmult),$rep);
 			print "##Downsampling ratio $downmult, replica $rep .\n";
@@ -405,7 +407,51 @@ else
 			print(" done.\n");
 		}
 	}
-	print "All done\n";
+	print "#All done, preparing report ...";
+	$report_name=$sample_id.".report.txt" if not defined $report_name;
+	open (CONFIG, $cfile_name);
+	open (REPORT,">", $report_name) or print "Cannot open report to $report_name .\n" and exit;
+	print REPORT "#Config file $cfile_name:\n";
+	while(<CONFIG>)
+	{
+		print REPORT "#".$_;
+	}
+	close CONFIG;
+	print REPORT "#the results:\n";
+	print REPORT "e_cov\treplica\toriginal_only\tintersection\tcalled_only\n";
+	#opendir(RESULTSDIR, $results_folder) or print "Can\'t open folder $results_folder .\n" and exit;
+	#my @logfiles= grep { 
+  #          /.log$/     #ends with .log
+	#    && -f "$results_folder/$_"   # and is a file
+	#} readdir(RESULTSDIR);
+	#close RESULTSDIR;
+	#foreach my $logfile (@logfiles)
+	#{
+		#dosomething
+	#}
+	foreach my $downmult (@downsample_schedule)
+	{
+		my $logfile;
+		my ($original_only,$intersection,$called_only);
+		if ($downmult==1)
+		{
+			$logfile="$results_folder/$alingment_file_name.log";
+			interpret_log(\$intersection,\$called_only,\$original_only,$logfile);
+			print REPORT $coverage/$downmult,"\t1\t",$original_only,"\t",$intersection,"\t",$called_only,"\n";
+		}
+		else
+		{
+			for (my $rep=1; $rep<=$downsample_replicas; $rep++)
+			{
+				my $alingment_file_name_local=repeat_file_name(downsampled_file_name($sample_id,$downmult),$rep);
+				$logfile="$results_folder/$alingment_file_name_local.log";
+				interpret_log(\$intersection,\$called_only,\$original_only,$logfile);
+				print REPORT $coverage/$downmult,"\t",$rep,"\t",$original_only,"\t",$intersection,"\t",$called_only,"\n";
+			}
+		}
+	}
+	close REPORT;
+	print " done.\n";
 }
 
 
@@ -450,3 +496,18 @@ sub isnatural($){
 	return 0;
 }
 
+sub interpret_log($$$$)
+{
+	#Found 731 SNPs common to both files.
+	#Found 0 SNPs only in main file.
+	#Found 362 SNPs only in second file.
+	my ($both_ref,$main_ref,$second_ref,$log)=@_;
+	open(LOG,$log) or print "Cannot open log $log" and exit;
+	while (<LOG>)
+	{
+		$$both_ref=$1 if (/Found (\d+) SNPs common to both files./);
+		$$main_ref=$1 if (/Found (\d+) SNPs only in main file./);
+		$$second_ref=$1 if (/Found (\d+) SNPs only in second file./);
+	}
+	close LOG;
+}
