@@ -63,6 +63,8 @@ the sample_name and it lives in the results folder.
 If we wave a downasmple schedule (like downsample_schedule=1,2,5 - the denominators for reads number), 
 we sample the reads file according to it and repeat alignment+basecalling.
 The number of downsample cycles is downsample_replica. 
+
+Then, we conbine all the numbers of found SNP's 
 \n\n
 " and exit if 
 (
@@ -82,7 +84,7 @@ my $cfile_name=$ARGV[0];
 
 open( CONFIG, $cfile_name ) or print "Can't open config file $cfile_name. Error is  '$!' \n" and exit;
 
-my ($fasta_file, $sample_id, $mutations_file, $reads_file, $bowtie_index_base, $downsample_replica);
+my ($fasta_file, $sample_id, $mutations_file, $reads_file, $bowtie_index_base, $downsample_replica, $random_state_file);
 
 my ($mut_bases_per_snv,$read_length,$coverage); 
 
@@ -108,8 +110,9 @@ while (<CONFIG>) {
 	$coverage = $line[1] if $line[0] eq 'coverage';
 	$reads_file = $line[1] if $line[0] eq 'reads_file';
 	$mutations_file = $line[1] if $line[0] eq 'mutations_file';
-	$bowtie_index_base= $line[1] if $line[0] eq 'bowtie_index_base';
-	$downsample_replica= $line[1] if $line[0] eq 'downsample_replica';
+	$bowtie_index_base = $line[1] if $line[0] eq 'bowtie_index_base';
+	$downsample_replica = $line[1] if $line[0] eq 'downsample_replica';
+	$random_state_file  = $line[1] if $line[0] eq 'random_state_file';
 	if ($line[0] eq 'downsample_schedule')
 	{
 		@downsample_schedule=split ',|;',$line[1];
@@ -201,7 +204,7 @@ $reads_file_link = $reads_file if defined $reads_file;
 
 $mutations_file="$sample_id.mutations";
 $reads_file="$sample_id.reads";
-my $random_state_file="$sample_id.rnd";
+$random_state_file="$sample_id.rnd" if !defined $random_state_file;
 
 print "#Random coverage mutation test pipeline started. Config file is $ARGV[0], sample id is $sample_id.\n";
 if (! -e $mutations_file || ! -e $reads_file) 
