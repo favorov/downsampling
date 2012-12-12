@@ -7,5 +7,6 @@ rm -f *.reads;
 rm -f *.mutations;
 rm -f *.rnd;
 rm -f *.bam;
+rm -f *.bai;
 rm -f *.sam;
 rm -f *.log;

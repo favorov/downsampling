@@ -17,7 +17,7 @@ random_seed_2=1436111
 #bowtie_index_base=chr1_gl000192_random
 #downsample_schedule=1,2,5,10,20,50,100,200
 #downsample_replicas=50
-downsample_schedule=1,5,10,20,25,50
+downsample_schedule=1,5
 downsample_replicas=5
 random_state_file=randomstate.rnd
 #we will pass it to others by commandline

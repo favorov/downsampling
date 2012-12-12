@@ -309,8 +309,14 @@ else
 		print("#Aligning reads with Bowtie\n");
 		#./bowtie -S -v 2 -m 1 --un unmapped.tests.sam -f chr1_gl000192_random reads.test --sam-RG SM:quasiburroed 2> bowtie.log.test.sam | ./samtools view -Sbh -   >  mapped.test.bam
 		system("$bowtie_folder"."bowtie -S -v 2 -m 1 --un $alingment_file_name.unmapped --sam-RG ID:$sample_id --sam-RG SM:$sample_id -f $bowtie_index_base $reads_file 2> bowtie.$alingment_file_name.log > $alingment_file_name.sam") == 0 or die ("Bowtie failed: $?\n") ;
-		print("#sam->bam\n");
-		system("$samtools_folder"."samtools view -Sbh $alingment_file_name.sam > $alingment_file_name.bam")  == 0 or die ("Samtools sam->bam failed: $?\n") ;
+		print("#sam->bam ... \n");
+		system("$samtools_folder"."samtools view -Sbh $alingment_file_name.sam > $alingment_file_name.u.bam")  == 0 or die ("Samtools sam->bam failed: $?\n") ;
+		print("#Sorting ... ");
+		system("$samtools_folder"."samtools sort $alingment_file_name.u.bam $alingment_file_name")  == 0 or die ("Samtools sort failed: $?\n") ;
+		unlink "$alingment_file_name.u.bam";
+		print("indexing ... ");
+		system("$samtools_folder"."samtools index $alingment_file_name.bam")  == 0 or die ("Samtools index failed: $?\n") ;
+		print "done\n";
 		print "#Finished (alignment) ...\n";
 		unlink "$alingment_file_name.sam" if ! $downsample_schedule_is_nontrivial;
 		#we are going to sample from this sam, so what for to kill it?
@@ -370,8 +376,13 @@ else
 			if ( ! -e $alingment_file_name_local.".bam")
 			{
 				print "##DownSAMpling.... ";
-				my $downSAM_string="$downSAM_folder"."downSAM --downSAM.one_from_reads $downmult --downSAM.random_state_file $random_state_file < $alingment_file_name.sam | $samtools_folder"."samtools view -Sbh -  >  $alingment_file_name_local.bam ";
+				my $downSAM_string="$downSAM_folder"."downSAM --downSAM.one_from_reads $downmult --downSAM.random_state_file $random_state_file < $alingment_file_name.sam | $samtools_folder"."samtools view -Sbh -  >  $alingment_file_name_local.u.bam ";
 				system($downSAM_string) == 0 or die ("Downsampling failed: $?\n");
+				print("#Sorting ... ");
+				system("$samtools_folder"."samtools sort $alingment_file_name_local.u.bam $alingment_file_name_local")  == 0 or die ("Samtools sort failed: $?\n") ;
+				unlink "$alingment_file_name_local.u.bam";
+				print("indexing ... ");
+				system("$samtools_folder"."samtools index $alingment_file_name_local.bam")  == 0 or die ("Samtools index failed: $?\n") ;
 				print "done.\n";
 			}
 			else
