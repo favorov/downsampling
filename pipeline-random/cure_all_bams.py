@@ -1,4 +1,4 @@
-#$Id: $
+#$Id$
 
 import glob
 import os.path
