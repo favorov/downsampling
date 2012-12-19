@@ -31,18 +31,18 @@ my $bgzip_folder="../../tools-src/tabix/tabix-0.2.6/";
 my $results_folder="./results/";
 
 
-if(`pwd` ~= /szyfrowdata/) # we are on szyfrow
+if(`pwd` =~ /szyfrowdata/) # we are on szyfrow
 {
-	my $cheapseq_folder="../cheapseq/";
-	my $downSAM_folder="../downSAM/";
-	my $noiser_folder="../noiser/";
-	my $report2vcf_folder=$cheapseq_folder;
-	my $bowtie_folder="";
-	my $samtools_folder="";
-	my $bcftools_folder="";
-	my $vcftools_folder="";
-	my $bgzip_folder="../tools-src/tabix/tabix-0.2.6/";
-	my $results_folder="./results/";
+	$cheapseq_folder="../cheapseq/";
+	$downSAM_folder="../downSAM/";
+	$noiser_folder="../noiser/";
+	$report2vcf_folder=$cheapseq_folder;
+	$bowtie_folder="";
+	$samtools_folder="";
+	$bcftools_folder="";
+	$vcftools_folder="";
+	$bgzip_folder="../tools-src/tabix/tabix-0.2.6/";
+	$results_folder="./results/";
 }
 
 mkdir $results_folder if (! -d $results_folder);
