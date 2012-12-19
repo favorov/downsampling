@@ -18,8 +18,10 @@ sub isnumber($);
 sub isnatural($);
 sub interpret_log($$$$);
 
+#my CYGWIN folders setup
 my $cheapseq_folder="../cheapseq/";
 my $downSAM_folder="../downSAM/";
+my $noiser_folder="../noiser/";
 my $report2vcf_folder=$cheapseq_folder;
 my $bowtie_folder="../../tools-src/bowtie/src/bowtie-0.12.8/";
 my $samtools_folder="../../tools-src/samtools/samtools-0.1.18/";
@@ -27,6 +29,21 @@ my $bcftools_folder="$samtools_folder/bcftools/";
 my $vcftools_folder="../../tools-src/vcftools/vcftools/cpp/";
 my $bgzip_folder="../../tools-src/tabix/tabix-0.2.6/";
 my $results_folder="./results/";
+
+
+if(`pwd` ~= /szyfrowdata/) # we are on szyfrow
+{
+	my $cheapseq_folder="../cheapseq/";
+	my $downSAM_folder="../downSAM/";
+	my $noiser_folder="../noiser/";
+	my $report2vcf_folder=$cheapseq_folder;
+	my $bowtie_folder="";
+	my $samtools_folder="";
+	my $bcftools_folder="";
+	my $vcftools_folder="";
+	my $bgzip_folder="../tools-src/tabix/tabix-0.2.6/";
+	my $results_folder="./results/";
+}
 
 mkdir $results_folder if (! -d $results_folder);
 
@@ -87,13 +104,17 @@ open( CONFIG, $cfile_name ) or print "Can't open config file $cfile_name. Error 
 
 my ($fasta_file, $sample_id, $mutations_file, $reads_file, $bowtie_index_base, $downsample_replicas, $random_state_file, $report_name);
 
-my ($mut_bases_per_snv,$read_length,$coverage); 
+my ($mutations_bases_per_snv,$read_length,$coverage); 
 
 my @downsample_schedule;
 
 my $downsample_schedule_is_nontrivial=0;
 
 my $one_is_in_downsample_schedule=0;
+
+my $noise_bases_per_error=0;
+
+my $heterozygous_probability=0.5;
 
 while (<CONFIG>) {
 	chomp;
@@ -106,7 +127,7 @@ while (<CONFIG>) {
 	#	print "\'$line[0]\' = \'$line[1]\'\n";
 	$fasta_file	= $line[1] if $line[0] eq 'fasta_file';
 	$sample_id 	= $line[1] if $line[0] eq 'sample_id';
-	$mut_bases_per_snv = $line[1] if $line[0] eq 'bases_per_snv';
+	$mutations_bases_per_snv = $line[1] if $line[0] eq 'bases_per_snv';
 	$read_length = $line[1] if $line[0] eq 'read_length';
 	$coverage = $line[1] if $line[0] eq 'coverage';
 	$reads_file = $line[1] if $line[0] eq 'reads_file';
@@ -115,6 +136,8 @@ while (<CONFIG>) {
 	$downsample_replicas = $line[1] if $line[0] eq 'downsample_replicas';
 	$random_state_file  = $line[1] if $line[0] eq 'random_state_file';
 	$report_name  = $line[1] if $line[0] eq 'report_name';
+	$heterozygous_probability = $line[1] if $line[0] eq 'heterozygous_probability';
+	$noise_bases_per_error = $line[1] if $line[0] eq 'bases_per_error';
 	if ($line[0] eq 'downsample_schedule')
 	{
 		@downsample_schedule=split ',|;',$line[1];
@@ -163,7 +186,7 @@ else
 	print "Coverage is not natural.\n" and exit unless isnatural $read_length;
 }
 
-if (!defined $mut_bases_per_snv)
+if (!defined $mutations_bases_per_snv)
 {
 	print "Number of bases per mutated SNV is set to 1000 by default.\n";
 	$coverage=1000;
@@ -183,7 +206,7 @@ if (! defined $bowtie_index_base)
 	$bowtie_index_base=$fasta_name_base;
 }
 
-my $recommended_sample_id=$fasta_name_base."-cheapseq-m".$mut_bases_per_snv."-c".$coverage."-r".$read_length;
+my $recommended_sample_id=$fasta_name_base."-cheapseq-m".$mutations_bases_per_snv."-c".$coverage."-r".$read_length;
 
 if (! defined $sample_id)
 {
@@ -338,7 +361,7 @@ else
 		print("#Make basecalling\n");
 		system("$samtools_folder"."samtools mpileup -uf $fasta_file $alingment_file_name.bam > $alingment_file_name.pileup") == 0 or die ("samtools mpileup failed: $?\n");
 		print("#pileup->vcf\n");
-		system("$bcftools_folder"."bcftools view -cvg $alingment_file_name.pileup | $bgzip_folder"."bgzip > $alingment_file_name.vcf.gz") == 0 or die ("pileup->bcf failed: $?\n");
+		system("$bcftools_folder"."bcftools view -p $heterozygous_probability -cvg $alingment_file_name.pileup | $bgzip_folder"."bgzip > $alingment_file_name.vcf.gz") == 0 or die ("pileup->bcf failed: $?\n");
 		print "#Finished (basecalling) ...\n";
 		unlink "$alingment_file_name.pileup"
 		#vcf only
@@ -400,7 +423,7 @@ else
 				print("##Make basecalling\n");
 				system("$samtools_folder"."samtools mpileup -uf $fasta_file $alingment_file_name_local.bam > $alingment_file_name_local.pileup") == 0 or die ("samtools mpileup failed: $?\n");
 				print("##pileup->vcf\n");
-				system("$bcftools_folder"."bcftools view -cvg $alingment_file_name_local.pileup | $bgzip_folder"."bgzip > $alingment_file_name_local.vcf.gz") == 0  or die ("pileup->bcf failed: $?\n");
+				system("$bcftools_folder"."bcftools view  -p $heterozygous_probability -cvg $alingment_file_name_local.pileup | $bgzip_folder"."bgzip > $alingment_file_name_local.vcf.gz") == 0  or die ("pileup->bcf failed: $?\n");
 				print "##Finished (basecalling) ...\n";
 				unlink "$alingment_file_name_local.pileup"
 				#vcf only
