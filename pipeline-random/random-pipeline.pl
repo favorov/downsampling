@@ -69,6 +69,9 @@ The vcf file name is mutations_file field from config with \".vcf\" suffix.
 
 If there is no bowtie index (bowtie_index_base is to be in config), we biuld it from fasta_file.
 
+If bases_per_error is not 0 (noised sample), we add noise here to the FastA file. The no-noised fasta has 
+extesion .no-noise.fa and it is unlinked after the noiser run.  
+
 Now, we want to align the reads aginst the fasta and to make basecalling. 
 If there is no reads_file.bam file or it is older
 than the read file, we run bowtie | samtools to align reads against the index and write bam file.
@@ -116,6 +119,8 @@ my $noise_bases_per_error=0;
 
 my $heterozygous_probability=0.5;
 
+#my $config_section='cheapseq';
+
 while (<CONFIG>) {
 	chomp;
 	s/\r//g;
@@ -125,18 +130,21 @@ while (<CONFIG>) {
 	$line[1] = "" if not defined $line[1];
 
 	#	print "\'$line[0]\' = \'$line[1]\'\n";
+	#[cheapseq]
 	$fasta_file	= $line[1] if $line[0] eq 'fasta_file';
-	$sample_id 	= $line[1] if $line[0] eq 'sample_id';
 	$mutations_bases_per_snv = $line[1] if $line[0] eq 'bases_per_snv';
 	$read_length = $line[1] if $line[0] eq 'read_length';
 	$coverage = $line[1] if $line[0] eq 'coverage';
 	$reads_file = $line[1] if $line[0] eq 'reads_file';
 	$mutations_file = $line[1] if $line[0] eq 'mutations_file';
+	#[pipeline]
+	$sample_id 	= $line[1] if $line[0] eq 'sample_id';
 	$bowtie_index_base = $line[1] if $line[0] eq 'bowtie_index_base';
 	$downsample_replicas = $line[1] if $line[0] eq 'downsample_replicas';
 	$random_state_file  = $line[1] if $line[0] eq 'random_state_file';
 	$report_name  = $line[1] if $line[0] eq 'report_name';
 	$heterozygous_probability = $line[1] if $line[0] eq 'heterozygous_probability';
+	#[noiser]
 	$noise_bases_per_error = $line[1] if $line[0] eq 'bases_per_error';
 	if ($line[0] eq 'downsample_schedule')
 	{
@@ -206,7 +214,9 @@ if (! defined $bowtie_index_base)
 	$bowtie_index_base=$fasta_name_base;
 }
 
-my $recommended_sample_id=$fasta_name_base."-cheapseq-m".$mutations_bases_per_snv."-c".$coverage."-r".$read_length;
+my $recommended_sample_id=$fasta_name_base."-cheapseq-m".$mutations_bases_per_snv."-c".$coverage."-rd".$read_length;
+
+$recommended_sample_id=$recommended_sample_id."-n".$noise_bases_per_error if $noise_bases_per_error != 0;
 
 if (! defined $sample_id)
 {
@@ -238,7 +248,17 @@ if (! -e $mutations_file || ! -e $reads_file)
 	my $cheapseq_string="$cheapseq_folder"."cheapseq --cheapseq.reads_file $reads_file --cheapseq.mutations_file $mutations_file --cheapseq.random_state_file $random_state_file $cfile_name";
 	print "#Start cheapseq...\n";
 	system($cheapseq_string) == 0 or die ("Cheapseq start failed: $?\n");
-	print "#Finished (cheapseq) ...\n";
+	print "#Cheapseq done\n";
+	#here, we add the noise to FastA
+	if ($noise_bases_per_error>0)
+	{
+		print "#Start noising...\n";
+		rename $reads_file, $reads_file.".nonoise";
+		system($noiser_folder."noiser --noiser.bases_per_error $noise_bases_per_error --noiser.random_state_file $random_state_file < $reads_file.nonoise > $reads_file"  ) == 0 or die ("Noiser start failed: $?\n");
+		#unlink $reads_file.".nonoise";
+		print "#Noising done\n";
+	}
+	#print "Noise=", $noise_bases_per_error,"\n" if $noise_bases_per_error>0;
 }
 else
 {
@@ -315,8 +335,6 @@ else
 	print "#Bowtie index is already build.\n";
 }
 
-
-
 # here, we will start the internal cycles of the pipeline. It can be a cycle, do now we just include it in {}
 
 {
@@ -390,6 +408,7 @@ else
 		for (my $rep=1; $rep<=$downsample_replicas; $rep++)
 		{
 			my $alingment_file_name_local=repeat_file_name(downsampled_file_name($sample_id,$downmult),$rep);
+			my $sample_id_postfix="-d".$downmult."-rp".$rep;
 			print "##Downsampling ratio $downmult, replica $rep .\n";
 			if ( -e $alingment_file_name_local.".bam")
 			{
@@ -399,7 +418,7 @@ else
 			if ( ! -e $alingment_file_name_local.".bam")
 			{
 				print "##DownSAMpling.... ";
-				my $downSAM_string="$downSAM_folder"."downSAM --downSAM.one_from_reads $downmult --downSAM.random_state_file $random_state_file < $alingment_file_name.sam | $samtools_folder"."samtools view -Sbh -  >  $alingment_file_name_local.u.bam ";
+				my $downSAM_string="$downSAM_folder"."downSAM --downSAM.one_from_reads $downmult --downSAM.random_state_file $random_state_file --downSAM.sample_id_postfix $sample_id_postfix < $alingment_file_name.sam | $samtools_folder"."samtools view -Sbh -  >  $alingment_file_name_local.u.bam ";
 				system($downSAM_string) == 0 or die ("Downsampling failed: $?\n");
 				print("#Sorting ... ");
 				system("$samtools_folder"."samtools sort $alingment_file_name_local.u.bam $alingment_file_name_local")  == 0 or die ("Samtools sort failed: $?\n") ;
@@ -452,7 +471,7 @@ else
 	}
 	close CONFIG;
 	print REPORT "#the results:\n";
-	print REPORT "e_cov\treplica\toriginal_only\tintersection\tcalled_only\n";
+	print REPORT "e_cov\treplica\t1/noise\toriginal_only\tintersection\tcalled_only\n";
 	#opendir(RESULTSDIR, $results_folder) or print "Can\'t open folder $results_folder .\n" and exit;
 	#my @logfiles= grep { 
   #          /.log$/     #ends with .log
@@ -471,7 +490,7 @@ else
 		{
 			$logfile="$results_folder"."$alingment_file_name.log";
 			interpret_log(\$intersection,\$called_only,\$original_only,$logfile);
-			print REPORT $coverage/$downmult,"\t1\t",$original_only,"\t",$intersection,"\t",$called_only,"\n";
+			print REPORT $coverage/$downmult,"\t1\t",$bases_per_error,$original_only,"\t",$intersection,"\t",$called_only,"\n";
 		}
 		else
 		{
@@ -480,7 +499,7 @@ else
 				my $alingment_file_name_local=repeat_file_name(downsampled_file_name($sample_id,$downmult),$rep);
 				$logfile="$results_folder"."$alingment_file_name_local.log";
 				interpret_log(\$intersection,\$called_only,\$original_only,$logfile);
-				print REPORT $coverage/$downmult,"\t",$rep,"\t",$original_only,"\t",$intersection,"\t",$called_only,"\n";
+				print REPORT $coverage/$downmult,"\t",$rep,"\t",$bases_per_error,"\t",$original_only,"\t",$intersection,"\t",$called_only,"\n";
 			}
 		}
 	}
