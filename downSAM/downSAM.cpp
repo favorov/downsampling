@@ -6,6 +6,9 @@ $Id: noiser.cpp 1778 2012-07-11 16:41:02Z favorov $
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+#include <iterator>
+#include <vector>
+#include <algorithm>
 #include <boost/program_options.hpp>
 #include <boost/random/ranlux.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
@@ -28,6 +31,7 @@ int main(int argc, char ** argv)
 	unsigned int min_read_length;
 	unsigned int random_seed_1;
 	unsigned int random_seed_2;
+	string sample_id_postfix;
 	string random_state_file;
 	boost::program_options::options_description desc
 			("downSAM: reads SAM, outputs SAM.\n Detects reads by mean_read_length length sunstring of [ATGCatgc].\n Output only part of them, on random. All other line are outputed as-is. \n Command-line options override config file;\n   section.option is the same as option in [section].\n Options (config file lines)");
@@ -38,6 +42,7 @@ int main(int argc, char ** argv)
 			("downSAM.min_read_length", boost::program_options::value<unsigned int>(&min_read_length)->default_value(30), "minimal length of read, to detect reads by [ATGCatgc]{min_read_length} regex")
 			("downSAM.random_seed_1", boost::program_options::value<unsigned int>(&random_seed_1)->default_value(DSEED_1), "random seed 1 for noiser")
 			("downSAM.random_seed_2", boost::program_options::value<unsigned int>(&random_seed_2)->default_value(DSEED_2), "random seed 2 for noiser")
+			("downSAM.sample_id_postfix", boost::program_options::value<string>(&sample_id_postfix), "the posfix to be added to both SM and ID fields of @RG line")
 			("downSAM.random_state_file", boost::program_options::value<string>(&random_state_file), "random generator state file;\nthe state is read from the file on start\nand it is saved to the file on finish;\nif the option is given and the file exists,\nthe random_seed options are not used")
 	;
 	try { 
@@ -92,56 +97,94 @@ int main(int argc, char ** argv)
 		gen.seed(iniseedseq);
 	}
 
-	boost::random::uniform_int_distribution<unsigned int> to_read_or_not_to_read(0,one_from_reads-1);
+	boost::random::uniform_int_distribution<unsigned int> to_write_or_not_to_write(0,one_from_reads-1);
 	string current_string;
 	
 	string read_regex_string="^.+[ATGCatgc]{"+boost::lexical_cast<string>(min_read_length)+",}.+$";
 	string PG_regex_string="^@PG.*$";
+	string RG_regex_string="^@RG.*$";
+	string ID_regex_string="^ID:.*$";
+	string SM_regex_string="^SM:.*$";
 	
 	boost::regex read_signat(read_regex_string);
 	boost::regex PG_signat(PG_regex_string);
+	boost::regex RG_signat(RG_regex_string);
+	boost::regex ID_signat(ID_regex_string);
+	boost::regex SM_signat(SM_regex_string);
 	
-	bool PG_written=false,PG_writing=false;
+	bool PG_written=false,PG_writing=false,HEAD_over=false;
 	//cerr<<read_regex_string<<endl;
-
+	
 
 	while (!cin.eof())
 	{
 		getline(cin, current_string);
 		boost::trim(current_string);
-		if (!PG_written)
-		{
-			//we care about @PG only once
-			if( boost::regex_match(current_string, PG_signat))
+		if (!HEAD_over)	//we are in header
+		{	
+			if (!PG_written)
 			{
-				cout<<current_string<<endl;
-				PG_writing=true;
-				//we started @PG output
-				continue;
-			}
-			else
-			{
-				if(PG_writing) //so, the PG module is finished right now
+				//we care about @PG only once
+				if( boost::regex_match(current_string, PG_signat))
 				{
-					cout<<"@PG\tID:downSAM\tVN:1.0.1\tCL:\"downSAM --downSAM.one_from_reads "<<one_from_reads<<" --downSAM.min_read_length "<<min_read_length<<"\""<<endl; //wrote our @PG signature
-					PG_writing=false;
-					PG_written=true;
-					//we finished @PG output, the string we read goes further
+					cout<<current_string<<endl;
+					PG_writing=true;
+					//we started @PG output
+					continue;
 				}
-				//else, we do nothing: it is not @PG-related situation, if it does not match read_signat, it will be printed later
+				else
+				{
+					if(PG_writing) //so, the PG module is finished right now
+					{
+						cout<<"@PG\tID:downSAM\tVN:1.0.1\tCL:\"downSAM --downSAM.one_from_reads "<<one_from_reads<<" --downSAM.min_read_length "<<min_read_length<<"\""<<endl; //wrote our @PG signature
+						PG_writing=false;
+						PG_written=true;
+						//we finished @PG output, the string we read goes further
+					}
+					//else, we do nothing: it is not @PG-related situation, if it does not match read_signat, it will be printed later
+				}
 			}
 
+			if( boost::regex_match(current_string, RG_signat))
+			{
+				istringstream stream(current_string);
+				vector<string> RG_tokens;
+				copy(istream_iterator<string>(stream),
+								 istream_iterator<string>(),
+								 back_inserter<vector<string> >(RG_tokens));
+				for (vector<string>::iterator token=RG_tokens.begin();token<RG_tokens.end();token++)
+				{
+					if( boost::regex_match(*token, ID_signat))
+						*token+=sample_id_postfix;
+					if( boost::regex_match(*token, SM_signat))
+						*token+=sample_id_postfix;
+					if (token+1<RG_tokens.end())
+						cout<<*token<<"\t";
+					else
+						cout<<*token<<endl;
+				}
+				continue;
+			}
+			
+			if( boost::regex_match(current_string, read_signat))
+			//read
+			{
+				HEAD_over=true; //it is a read, goodbye, header
+				if (!PG_written)
+				{
+					cout<<"@PG\tID:downSAM\tVN:1.0.1\tCL:\"downSAM --downSAM.one_from_reads "<<one_from_reads<<" --downSAM.min_read_length "<<min_read_length<<"\""<<endl; //wrote our @PG signature
+					PG_written=true; //  actually, we do need it
+				}
+				if (! to_write_or_not_to_write(gen))
+					cout<<current_string<<endl;
+				continue;
+			}
+
+			cout<<current_string<<endl; //it is a header string, no idea what
 		}
-		if( boost::regex_match(current_string, read_signat))
-		//read
-		{
-			PG_written=true; // @PG is header, if a read is read, the header is over
-			if (! to_read_or_not_to_read(gen))
+		else // header is over; we think that every line is a read
+			if (! to_write_or_not_to_write(gen))
 				cout<<current_string<<endl;
-		}
-		else
-		//not read
-			cout<<current_string<<endl;
 	}
 
 	if (random_state_file!="")
