@@ -22,5 +22,5 @@ downsample_replicas=5
 random_state_file=randomstate.rnd
 #we will pass it to others by commandline
 
-[noiser]
-bases_per_error=5000
+#[noiser]
+#bases_per_error=5000
