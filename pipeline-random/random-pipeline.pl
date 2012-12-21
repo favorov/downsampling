@@ -490,7 +490,7 @@ else
 		{
 			$logfile="$results_folder"."$alingment_file_name.log";
 			interpret_log(\$intersection,\$called_only,\$original_only,$logfile);
-			print REPORT $coverage/$downmult,"\t1\t",$noise_bases_per_error,$original_only,"\t",$intersection,"\t",$called_only,"\n";
+			print REPORT $coverage/$downmult,"\t1\t",$noise_bases_per_error,"\n",$original_only,"\t",$intersection,"\t",$called_only,"\n";
 		}
 		else
 		{
