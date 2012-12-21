@@ -555,6 +555,7 @@ sub interpret_log($$$$)
 	#Found 0 SNPs only in main file.
 	#Found 362 SNPs only in second file.
 	my ($both_ref,$main_ref,$second_ref,$log)=@_;
+	$$both_ref=$$main_ref=$$second_ref=0;
 	open(LOG,$log) or print "Cannot open log $log" and exit;
 	while (<LOG>)
 	{
