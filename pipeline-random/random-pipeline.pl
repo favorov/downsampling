@@ -255,7 +255,7 @@ if (! -e $mutations_file || ! -e $reads_file)
 		print "#Start noising...\n";
 		rename $reads_file, $reads_file.".nonoise";
 		system($noiser_folder."noiser --noiser.bases_per_error $noise_bases_per_error --noiser.random_state_file $random_state_file < $reads_file.nonoise > $reads_file"  ) == 0 or die ("Noiser start failed: $?\n");
-		#unlink $reads_file.".nonoise";
+		unlink $reads_file.".nonoise";
 		print "#Noising done\n";
 	}
 	#print "Noise=", $noise_bases_per_error,"\n" if $noise_bases_per_error>0;
