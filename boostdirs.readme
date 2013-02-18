@@ -3,7 +3,7 @@
 #$Id$
 #****************************************************************************#
 
-For all the three tools, we used boobt library. There are wo ways to use it - you can install it and thus integrate it into your system or you can just make it and use the make result (stage folder) to link your progrems with. We use the second method, which requires a bit more additional information for the linker/compiler/dynamic library tools, but it is more flexible and portable.
+For all the three tools, we used boost library. There are wo ways to use it - you can install it and thus integrate it into your system or you can just make it and use the make result (stage folder) to link your progrems with. We use the second method, which requires a bit more additional information for the linker/compiler/dynamic library tools, but it is more flexible and portable.
 
 1) Choose the boost folder. In all our examples, it is ~/boost/
 2) download the boost src from http://www.boost.org/ to the folder and unpack it. The new folder name is like ~/boost/boost_1_50_0/. (It depends on the boost version in a obvious way).
