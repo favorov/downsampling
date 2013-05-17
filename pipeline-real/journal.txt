@@ -1,0 +1,97 @@
+#$Id$
+
+2 feb 2013
+
+merge bams:
+first, sort
+samtools sort WJ5.slide1.L2.bam WJ5.slide1.L2.sort
+diff: everything is sorted. great!
+
+What hg (18 or 19)?
+@SQ	SN:chr1	LN:247249719
+@SQ	SN:chr2	LN:242951149
+@SQ	SN:chr3	LN:199501827
+@SQ	SN:chr4	LN:191273063
+@SQ	SN:chr5	LN:180857866
+@SQ	SN:chr6	LN:170899992
+@SQ	SN:chr7	LN:158821424
+@SQ	SN:chr8	LN:146274826
+@SQ	SN:chr9	LN:140273252
+@SQ	SN:chr10	LN:135374737
+@SQ	SN:chr11	LN:134452384
+@SQ	SN:chr12	LN:132349534
+@SQ	SN:chr13	LN:114142980
+@SQ	SN:chr14	LN:106368585
+@SQ	SN:chr15	LN:100338915
+@SQ	SN:chr16	LN:88827254
+@SQ	SN:chr17	LN:78774742
+@SQ	SN:chr18	LN:76117153
+@SQ	SN:chr19	LN:63811651
+@SQ	SN:chr20	LN:62435964
+@SQ	SN:chr21	LN:46944323
+@SQ	SN:chr22	LN:49691432
+@SQ	SN:chrX	LN:154913754
+@SQ	SN:chrY	LN:57772954
+@SQ	SN:chrM	LN:16571
+
+Looking at:
+http://www.ncbi.nlm.nih.gov/projects/genome/assembly/grc/human/data/index.shtml
+
+It is 'NCBI36' (hg18)
+
+Before merge: test headers:
+for i in *bam;do echo $i; ./samtools view -h $i | grep -E '^@' >  $i.head; done
+all the files have similar header.
+
+3 feb 2013
+
+Merge:
+./samtools.exe merge -h WJ5.slide1.L1.bam WJ5.slide1.bam WJ5.slide1.L?.bam
+
+Reference fasta is from 
+
+ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/pilot_data/technical/reference/ :
+ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/pilot_data/technical/reference/human_b36_male.fa.gz
+and
+ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/pilot_data/technical/reference/human_b36_male.fa.gz.fai
+
+4 feb 2013
+
+Pileup:
+./samtools mpileup -uf human_b36_male.fa.gz WJ5.slide1.bam | ./bcftools view -cvg - >  WJ5.slide1.bcf
+
+Does not work The fasta has chr names like 1, etc; WJ5 samfiles uses chr1, etc...
+
+add_chr_tonames.pl:
+
+<<<END
+
+#!/usr/bin/perl -w
+
+while (<>)
+{
+	if (/^>(\w+)(.*)$/)
+	{
+		print ">chr",$1,$2,"\n"
+	}
+	else {print};
+}
+
+END
+
+Run:
+gzip -dc human_b36_male.fa.gz | perl add_chr_tonames.pl | gzip > human_b36_male_chr_names.fa.gz
+
+index *.fai removed
+
+We call mutations
+
+./samtools mpileup -uf human_b36_male_chr_names.fa.gz WJ5.slide1.bam | ./bcftools view -cvg - >  WJ5.slide1.bcf
+
+5 Feb 2013
+
+We make list of mutation positions
+
+cut -f1,2 WJ5.slide1.bcf > WJ5.slide1.snv.pos
+
+Feb 17 2013 remebering something
