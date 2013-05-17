@@ -141,4 +141,13 @@ END
 
 and run it in both WJ5 and WJHeart
 
+May 17
 
+WJHeart is hg19
+WJ5 is hg18 - eventually, we decided to realign it....
+So, we work with normal WJHeart data now
+
+The plan is:
+1) Parallel downsampling script for a set of slides
+2) prepare testsiute
+3) parallel bcftools call for results of downsampling
