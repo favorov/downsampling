@@ -1,3 +1,4 @@
+$Id$
 2 feb 2013
 
 merge bams:
