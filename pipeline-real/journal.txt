@@ -1,5 +1,3 @@
-#$Id$
-
 2 feb 2013
 
 merge bams:
@@ -95,3 +93,51 @@ We make list of mutation positions
 cut -f1,2 WJ5.slide1.bcf > WJ5.slide1.snv.pos
 
 Feb 17 2013 remebering something
+
+May 5 2013
+
+Returning to the project.
+We decided not to merge slides, but either to run samtools with a list of files.
+Now, we have a bunch of slides in /data/szyfrowdata_a2/swheelan/WJVar/ : WJ5* are cancer; WJHeart* are normals.
+We create in szyfrow:/home/favorov/WJ folders WJ5 and WJHeart for them and make symbolic links:
+in WJ5 we run:
+for i in  /data/szyfrowdata_a2/swheelan/WJVar/WJ5*; do echo $i;ln -s $i . ; done
+
+in WJHeart:
+for i in  /data/szyfrowdata_a2/swheelan/WJVar/WJHeart*; do echo $i ; ln -s $i . ; done
+
+Let's test that WJHeart has similar reference.
+In WJHeart:
+(trying to remmber how did we get the headers Feb2; probably, unpack to grep '@SQ')
+samtools view -h WJHeart_L004_sorted.bam | grep '@SQ' > head_L004_SQ.txt
+
+May 7 2013
+
+Looks like it is hg37.... We are to think more with it....
+
+first, I retry  WJ5 (say slide 8 - it is new slide)
+
+in WJ5:
+samtools view -h WJ5.slide1.L8.bam | grep '@SQ' > WJ5.slide1.L8.header.txt
+
+We created a qury-header-script
+
+query_all_sq_lines_from_bams.sh:
+
+<<<END
+
+#! /bin/bash 
+for i in *bam;
+do
+	j=${i/.bam/}.SQ-head.txt;
+	echo $i;
+	samtools view -h $i | grep -E '^@' >  $j
+	echo $j;
+done
+
+
+END
+
+and run it in both WJ5 and WJHeart
+
+
