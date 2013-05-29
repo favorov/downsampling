@@ -1,15 +1,26 @@
-[SectionOne]
-Status: Single
-Name: Derek
-Value: Yes
-Age: 29
-Single: True
 
-[SectionTwo]
-FavoriteColor=Green
-[SectionThree]
-FamilyName: Johnson
-
-[Others]
-Route: 66
-
+[slides]
+#list of slides, they will be merged on run
+slide_1_normal.bam
+slide_2_normal.bam
+slide_3_normal.bam
+[downsampling]
+#dowsampling schedule each line is level(1 out for level in):runs
+10:5
+100:50
+[flow]
+cores:16
+[program_folders]
+#program prefix (path); their defaults are ""
+downSAM:
+samtools:
+bcftools:
+[folders]
+#defaults is scripts
+scripts:scripts
+#default is "downsamples"
+downsamples:downsamples
+#default is "bcfs"
+bcfs:bcfs
+#default is .
+slides:.
