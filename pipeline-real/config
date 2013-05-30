@@ -1,9 +1,9 @@
 
 [slides]
 #list of slides, they will be merged on run
-slide_1_normal.bam
-slide_2_normal.bam
-slide_3_normal.bam
+slide1.sam
+slide2.sam
+slide3.sam
 [downsampling]
 #dowsampling schedule each line is level(1 out for level in):runs
 10:5

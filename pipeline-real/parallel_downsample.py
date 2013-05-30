@@ -2,23 +2,24 @@
 #requires python3
 #$Id$
 import os
+import re
 import sys
 import configparser
 
 def my_info():
 	info_message="""pipeline-real A. Favorov (c) 2013. 
 Part of the coverage project. To know more, ask --help"""
-	print(info_message);
-	return;
+	print(info_message)
+	return
 
 def my_help():
 	help_message="""pipeline-real is a part of the coverage project
 The only parameter is one of following: 
 the configuration file name
 --help
---write-sample-config""";
-	print(help_message);
-	return;
+--write-sample-config"""
+	print(help_message)
+	return
 
 def write_sample_config():
 	sample_config="""
@@ -47,23 +48,23 @@ downsamples:downsamples
 bcfs:bcfs
 #default is .
 slides:.""";
-	print(sample_config);
+	print(sample_config)
 	return;
 
 
 if len(sys.argv)<2:
-	my_info();
-	sys.exit(0);
+	my_info()
+	sys.exit(0)
 
 if len(sys.argv)>2:
-	print ("\nToo many paraneters!\n");
-	sys.exit(1);
+	print ("\nToo many paraneters!\n")
+	sys.exit(1)
 
-if (sys.argv[1] in ["--help","--h","-h","-?","-help"]):
+if sys.argv[1] in ["--help","--h","-h","-?","-help"]:
 	my_help()
 	sys.exit(0)
 			
-if (sys.argv[1]=="--write-sample-config"):
+if sys.argv[1]=="--write-sample-config":
 	write_sample_config()
 	sys.exit(0)
 
@@ -71,15 +72,37 @@ if not os.path.exists(sys.argv[1]):
 	print ("Cannot open config "+sys.argv[1]+".")
 	sys.exit(1)
 
-Config = configparser.ConfigParser(allow_no_value=True)
-Config.read(sys.argv[1])
+config = configparser.ConfigParser(allow_no_value=True)
+config.read(sys.argv[1])
 
 #here, we start to check slides
 
-for sec in Config.sections():
+if "slides" not in config.sections():
+	print("no slides section in "+sys.argv[1]+" .")
+	sys.exit(1)
+
+slides=config.options("slides")
+
+for slide in slides:
+	if not os.path.exists(slide):
+		print("Cannot open slide: "+slide+" .")
+		sys.exit(1)
+
+print(slides)
+
+if "downsampling" not in config.sections():
+	print("no downsampling section section in "+sys.argv[1]+" .")
+	sys.exit(1)
+
+downsamples=config.options("downsampling")
+
+print(downsamples)
+
+
+for sec in config.sections():
 	print ("[{}]".format(sec))
-	for opt in Config.options(sec):
-		if (Config.get(sec,opt)==None):
+	for opt in config.options(sec):
+		if (config.get(sec,opt)==None):
 			print ("{}".format(opt))
 		else:
-			print ("{}:{}".format(opt,Config.get(sec,opt)))
+			print ("{}:{}".format(opt,config.get(sec,opt)))
