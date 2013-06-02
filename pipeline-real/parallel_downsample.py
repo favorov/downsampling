@@ -44,9 +44,9 @@ def fulltoolname(toolname,toolpath=None):
 		try:
 			resultfulltoolname=os.popen("which "+toolname).read().rstrip()
 			if not resultfulltoolname:
-				throw
+				raise Exception("Empty which return") #exception is stupid, I do not know python system of throw/catch
 		except:
-			print("Which did not find "+resulttoolname+" and its folder is not correctly given in config. So what?")
+			print("Which did not find "+toolname+" and its folder is not correctly given in config. So what?")
 			sys.exit(1)
 	else: #folder is given, we are to add it and to test it
 		resultfulltoolname=os.path.join(toolpath,toolname)
@@ -160,20 +160,29 @@ def main():
 		downsamples[scale_int]=repeats
 				
 
+	if "flow" not in config.sections():
+		print("no flow section section in "+sys.argv[1]+" . Is it OK?")
+
+
 	if "program_folders" not in config.sections():
 		print("no program_folders section section in "+sys.argv[1]+" . Is it OK?")
+		samtools=fulltoolname('samtools')
+		downSAM=fulltoolname('downSAM')
+		bcftools=fulltoolname('bcftools')
+	else:	
+		samtools=fulltoolname('samtools',config["program_folders"].get("samtools"))
+		downSAM=fulltoolname('downSAM',config["program_folders"].get("downSAM"))
+		bcftools=fulltoolname('bcftools',config["program_folders"].get("bcftools"))
 
-	samtools=fulltoolname('samtools',config["program_folders"].get("samtools"))
-	downSAM=fulltoolname('downSAM',config["program_folders"].get("downSAM"))
-	bcftools=fulltoolname('bcftools',config["program_folders"].get("bcftools"))
 
+
+
+	print(slide_names)
 	print(downsamples)
-
 	print(downSAM)
 	print(samtools)
 	print(bcftools)
 
-	print(slide_names)
 
 	sys.exit(0)
 

@@ -12,7 +12,7 @@ cores:16
 [program_folders]
 #program prefix (path); their defaults are "" (look in path)
 downSAM:../downSAM
-samtools:.
+samtools:
 bcftools:
 [folders]
 #defaults is scripts
