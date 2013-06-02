@@ -5,6 +5,7 @@ import os
 import re
 import sys
 import configparser
+import subprocess
 
 def my_info():
 	info_message="""pipeline-real A. Favorov (c) 2013. 
@@ -47,10 +48,45 @@ downsamples:downsamples
 #default is "bcfs"
 bcfs:bcfs
 #default is .
-slides:.""";
+slides:."""
 	print(sample_config)
-	return;
+	return
 
+def fulltoolname(toolname,toolpath=None):
+	if toolpath==None or toolpath=="":
+	# we will try to find it with which; virtually if it works - it works, no checks needed!
+	#but the thing is new, so we will check it
+		try:
+			fulltoolname=os.popen("which "+toolname).read().rstrip()
+			if not fulltoolname:
+				throw
+		except:
+			print("Which did not find "+toolname+" and its folder is not given in config. So what?")
+			sys.exit(1)
+	else: #folder is given, we are to add it and to test it
+		fulltoolname=os.path.join(toolpath,toolname)
+	if not os.path.isfile(fulltoolname): #here, we test that file exist
+		print("The file "+fulltoolname+" does not exist.")
+		sys.exit(1)
+	if subprocess.call("[ -x "+fulltoolname+" ]",shell=True): 
+	#we test that it is exec, the thing return 0 if it is OK
+	#if test returned 1, it file is not exec
+		print("You cannot execute the file "+fulltoolname+" .")
+		sys.exit(1)
+	return fulltoolname
+
+#def sam2bam_command(,name):
+#	command_line=samtools_dir
+#	return command_line
+
+#vars that define the behavoiur of the things
+if_bam=[]
+#boolean, bam or sam for each slide
+#all downsamples are bams, whatever
+slide_names=[]
+#names of slides without extension
+downsamples={}
+#dictionary scale:repeats; both are integers
 
 if len(sys.argv)<2:
 	my_info()
@@ -87,17 +123,52 @@ for slide in slides:
 	if not os.path.exists(slide):
 		print("Cannot open slide: "+slide+" .")
 		sys.exit(1)
-
-print(slides)
+	#file exist
+	if re.search(r"\.bam$",slide):
+		if_bam.append(True)
+	elif re.search(r"\.sam$",slide):
+		if_bam.append(False)
+	else:
+		print("Unknown slide extension"+slide+"\n")
+		sys.exit(1)
+	#slide name ok
+	slide_names.append(slide[:-4])
+	
+#we checked slides and we know bams and sams
 
 if "downsampling" not in config.sections():
 	print("no downsampling section section in "+sys.argv[1]+" .")
 	sys.exit(1)
 
-downsamples=config.options("downsampling")
+for scale in config.options("downsampling"):
+	try:
+		scale_int=int(scale)
+		scale_int + 1 #test for int, do nothing if OK
+	except TypeError:
+		print("Downsampling scale "+scale+" is not an integer.\n")
+		sys.exit(1)
+	repeats=config["downsampling"][scale]
+	try:
+		repeats=int(repeats)
+		repeats + 1 #test for int, do nothing if OK
+	except TypeError:
+		print("Downsampling repeats at scale "+scale+" is "+repeats+" and it is not an integer.\n")
+		sys.exit(1)
+	downsamples[scale_int]=repeats
+			
+
+if "program_folders" not in config.sections():
+	print("no program_folders section section in "+sys.argv[1]+" . Is it OK?")
+
+samtools=fulltoolname('samtools',config["program_folders"].get("samtools"))
 
 print(downsamples)
 
+print(samtools)
+
+print(slide_names)
+
+sys.exit(0)
 
 for sec in config.sections():
 	print ("[{}]".format(sec))
