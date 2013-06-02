@@ -7,21 +7,6 @@ import sys
 import configparser
 import subprocess
 
-def my_info():
-	info_message="""pipeline-real A. Favorov (c) 2013. 
-Part of the coverage project. To know more, ask --help"""
-	print(info_message)
-	return
-
-def my_help():
-	help_message="""pipeline-real is a part of the coverage project
-The only parameter is one of following: 
-the configuration file name
---help
---write-sample-config"""
-	print(help_message)
-	return
-
 def write_sample_config():
 	sample_config="""
 [slides]
@@ -57,123 +42,146 @@ def fulltoolname(toolname,toolpath=None):
 	# we will try to find it with which; virtually if it works - it works, no checks needed!
 	#but the thing is new, so we will check it
 		try:
-			fulltoolname=os.popen("which "+toolname).read().rstrip()
-			if not fulltoolname:
+			resultfulltoolname=os.popen("which "+toolname).read().rstrip()
+			if not resultfulltoolname:
 				throw
 		except:
-			print("Which did not find "+toolname+" and its folder is not given in config. So what?")
+			print("Which did not find "+resulttoolname+" and its folder is not correctly given in config. So what?")
 			sys.exit(1)
 	else: #folder is given, we are to add it and to test it
-		fulltoolname=os.path.join(toolpath,toolname)
-	if not os.path.isfile(fulltoolname): #here, we test that file exist
-		print("The file "+fulltoolname+" does not exist.")
-		sys.exit(1)
-	if subprocess.call("[ -x "+fulltoolname+" ]",shell=True): 
+		resultfulltoolname=os.path.join(toolpath,toolname)
+	if not os.path.isfile(resultfulltoolname): #here, we test that file exist
+		print("The file "+resultfulltoolname+" does not exist... trying which...")
+		return fulltoolname(toolname) #trying which	
+	if subprocess.call("[ -x "+resultfulltoolname+" ]",shell=True): 
 	#we test that it is exec, the thing return 0 if it is OK
 	#if test returned 1, it file is not exec
-		print("You cannot execute the file "+fulltoolname+" .")
-		sys.exit(1)
-	return fulltoolname
+		print("The file "+resultfulltoolname+" is not executable. ... trying which...")
+		return fulltoolname(toolname) #trying which	
+	return resultfulltoolname
 
 #def sam2bam_command(,name):
 #	command_line=samtools_dir
 #	return command_line
 
-#vars that define the behavoiur of the things
-if_bam=[]
-#boolean, bam or sam for each slide
-#all downsamples are bams, whatever
-slide_names=[]
-#names of slides without extension
-downsamples={}
-#dictionary scale:repeats; both are integers
+#here, we start the part that works only in __main__
 
-if len(sys.argv)<2:
-	my_info()
-	sys.exit(0)
+def my_info():
+	info_message="""pipeline-real A. Favorov (c) 2013. 
+Part of the coverage project. To know more, ask --help"""
+	print(info_message)
+	return
 
-if len(sys.argv)>2:
-	print ("\nToo many paraneters!\n")
-	sys.exit(1)
+def my_help():
+	help_message="""pipeline-real is a part of the coverage project
+The only parameter is one of following: 
+the configuration file name
+--help
+--write-sample-config"""
+	print(help_message)
+	return
 
-if sys.argv[1] in ["--help","--h","-h","-?","-help"]:
-	my_help()
-	sys.exit(0)
-			
-if sys.argv[1]=="--write-sample-config":
-	write_sample_config()
-	sys.exit(0)
+def main():
+	#vars that define the behavoiur of the things
+	if_bam=[]
+	#boolean, bam or sam for each slide
+	#all downsamples are bams, whatever
+	slide_names=[]
+	#names of slides without extension
+	downsamples={}
+	#dictionary scale:repeats; both are integers
 
-if not os.path.exists(sys.argv[1]):
-	print ("Cannot open config "+sys.argv[1]+".")
-	sys.exit(1)
+	if len(sys.argv)<2:
+		my_info()
+		sys.exit(0)
 
-config = configparser.ConfigParser(allow_no_value=True)
-config.read(sys.argv[1])
-
-#here, we start to check slides
-
-if "slides" not in config.sections():
-	print("no slides section in "+sys.argv[1]+" .")
-	sys.exit(1)
-
-slides=config.options("slides")
-
-for slide in slides:
-	if not os.path.exists(slide):
-		print("Cannot open slide: "+slide+" .")
+	if len(sys.argv)>2:
+		print ("\nToo many paraneters!\n")
 		sys.exit(1)
-	#file exist
-	if re.search(r"\.bam$",slide):
-		if_bam.append(True)
-	elif re.search(r"\.sam$",slide):
-		if_bam.append(False)
-	else:
-		print("Unknown slide extension"+slide+"\n")
+
+	if sys.argv[1] in ["--help","--h","-h","-?","-help"]:
+		my_help()
+		sys.exit(0)
+				
+	if sys.argv[1]=="--write-sample-config":
+		write_sample_config()
+		sys.exit(0)
+
+	if not os.path.exists(sys.argv[1]):
+		print ("Cannot open config "+sys.argv[1]+".")
 		sys.exit(1)
-	#slide name ok
-	slide_names.append(slide[:-4])
-	
-#we checked slides and we know bams and sams
 
-if "downsampling" not in config.sections():
-	print("no downsampling section section in "+sys.argv[1]+" .")
-	sys.exit(1)
+	config = configparser.ConfigParser(allow_no_value=True)
+	config.read(sys.argv[1])
 
-for scale in config.options("downsampling"):
-	try:
-		scale_int=int(scale)
-		scale_int + 1 #test for int, do nothing if OK
-	except TypeError:
-		print("Downsampling scale "+scale+" is not an integer.\n")
+	#here, we start to check slides
+
+	if "slides" not in config.sections():
+		print("no slides section in "+sys.argv[1]+" .")
 		sys.exit(1)
-	repeats=config["downsampling"][scale]
-	try:
-		repeats=int(repeats)
-		repeats + 1 #test for int, do nothing if OK
-	except TypeError:
-		print("Downsampling repeats at scale "+scale+" is "+repeats+" and it is not an integer.\n")
-		sys.exit(1)
-	downsamples[scale_int]=repeats
-			
 
-if "program_folders" not in config.sections():
-	print("no program_folders section section in "+sys.argv[1]+" . Is it OK?")
+	slides=config.options("slides")
 
-samtools=fulltoolname('samtools',config["program_folders"].get("samtools"))
-
-print(downsamples)
-
-print(samtools)
-
-print(slide_names)
-
-sys.exit(0)
-
-for sec in config.sections():
-	print ("[{}]".format(sec))
-	for opt in config.options(sec):
-		if (config.get(sec,opt)==None):
-			print ("{}".format(opt))
+	for slide in slides:
+		if not os.path.exists(slide):
+			print("Cannot open slide: "+slide+" .")
+			sys.exit(1)
+		#file exist
+		if re.search(r"\.bam$",slide):
+			if_bam.append(True)
+		elif re.search(r"\.sam$",slide):
+			if_bam.append(False)
 		else:
-			print ("{}:{}".format(opt,config.get(sec,opt)))
+			print("Unknown slide extension"+slide+"\n")
+			sys.exit(1)
+		#slide name ok
+		slide_names.append(slide[:-4])
+		
+	#we checked slides and we know bams and sams
+
+	if "downsampling" not in config.sections():
+		print("no downsampling section section in "+sys.argv[1]+" .")
+		sys.exit(1)
+
+	for scale in config.options("downsampling"):
+		try:
+			scale_int=int(scale)
+			scale_int + 1 #test for int, do nothing if OK
+		except TypeError:
+			print("Downsampling scale "+scale+" is not an integer.\n")
+			sys.exit(1)
+		repeats=config["downsampling"][scale]
+		try:
+			repeats=int(repeats)
+			repeats + 1 #test for int, do nothing if OK
+		except TypeError:
+			print("Downsampling repeats at scale "+scale+" is "+repeats+" and it is not an integer.\n")
+			sys.exit(1)
+		downsamples[scale_int]=repeats
+				
+
+	if "program_folders" not in config.sections():
+		print("no program_folders section section in "+sys.argv[1]+" . Is it OK?")
+
+	samtools=fulltoolname('samtools',config["program_folders"].get("samtools"))
+
+	print(downsamples)
+
+	print(samtools)
+
+	print(slide_names)
+
+	sys.exit(0)
+
+	for sec in config.sections():
+		print ("[{}]".format(sec))
+		for opt in config.options(sec):
+			if (config.get(sec,opt)==None):
+				print ("{}".format(opt))
+			else:
+				print ("{}:{}".format(opt,config.get(sec,opt)))
+
+#here, we finally run it all :)
+if __name__ == "__main__":
+    main()
+
