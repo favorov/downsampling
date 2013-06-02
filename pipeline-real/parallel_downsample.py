@@ -164,10 +164,14 @@ def main():
 		print("no program_folders section section in "+sys.argv[1]+" . Is it OK?")
 
 	samtools=fulltoolname('samtools',config["program_folders"].get("samtools"))
+	downSAM=fulltoolname('downSAM',config["program_folders"].get("downSAM"))
+	bcftools=fulltoolname('bcftools',config["program_folders"].get("bcftools"))
 
 	print(downsamples)
 
+	print(downSAM)
 	print(samtools)
+	print(bcftools)
 
 	print(slide_names)
 
