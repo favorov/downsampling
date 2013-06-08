@@ -5,11 +5,12 @@ slide2.sam
 slide3.sam
 [downsampling]
 #dowsampling schedule each line is level(1 out for level in):runs
-10:5
-100:50
+10:2
+100:5
 [flow]
-cores:16
-[program_folders]
+cores:2
+random_seed=circumambulate
+[tool_paths]
 #program prefix (path); their defaults are "" (look in path)
 downSAM:../downSAM
 samtools:

@@ -4,8 +4,14 @@
 import os
 import re
 import sys
+import errno
 import configparser
+import shutil
+import random
 import subprocess
+from multiprocessing import Pool
+
+really_execute=True
 
 def write_sample_config():
 	sample_config="""
@@ -16,11 +22,12 @@ slide_2_normal.bam
 slide_3_normal.bam
 [downsampling]
 #dowsampling schedule each line is level(1 out for level in):runs
-10:5
-100:50
+10:2
+100:5
 [flow]
 cores:16
-[program_folders]
+random_seed=circumambulate
+[tool_paths]
 #program prefix (path); their defaults are ""
 downSAM:
 samtools:
@@ -36,6 +43,12 @@ bcfs:bcfs
 slides:."""
 	print(sample_config)
 	return
+
+def run_command(command):
+	print("Running: \'"+command+"\'")
+	if (really_execute):
+		subprocess.call(command,shell=True)
+	print("Finished: \'"+command+"\'")
 
 def fulltoolname(toolname,toolpath=None):
 	if toolpath==None or toolpath=="":
@@ -60,6 +73,16 @@ def fulltoolname(toolname,toolpath=None):
 		return fulltoolname(toolname) #trying which	
 	return resultfulltoolname
 
+
+def make_sure_path_exists(path):
+	try:
+		os.makedirs(path)
+	except OSError as exception:
+		if exception.errno != errno.EEXIST:
+			raise # if it is not 'exist dir' - we throw exception
+			#the code creates folder is it does not exist
+
+
 #def sam2bam_command(,name):
 #	command_line=samtools_dir
 #	return command_line
@@ -81,8 +104,12 @@ the configuration file name
 	print(help_message)
 	return
 
+def downsampled_name(name,scale,repl):
+	output_file_name="{}_down_by_{}_repl_{}".format(name,scale,repl)
+	return output_file_name
+
 def main():
-	#vars that define the behavoiur of the things
+	#vars that define the behaviour of the things
 	if_bam=[]
 	#boolean, bam or sam for each slide
 	#all downsamples are bams, whatever
@@ -90,6 +117,7 @@ def main():
 	#names of slides without extension
 	downsamples={}
 	#dictionary scale:repeats; both are integers
+	#folders
 
 	if len(sys.argv)<2:
 		my_info()
@@ -114,6 +142,37 @@ def main():
 	config = configparser.ConfigParser(allow_no_value=True)
 	config.read(sys.argv[1])
 
+	#folders for data, slides, etc
+	if "folders" not in config.sections():
+		print("No folders section section in "+sys.argv[1]+" . I will post defaults:\n \".\" for slides, \"./bcfs\" for bcfs, \"./downsamples\" for downsamples. Is it OK?")
+		slides_folder="."
+		bcfs_folder="./bcfs"
+		downsamples_folder="./downsamples"
+	else:
+		if config.get("folders","slides")==None:
+			print("Defult value \".\" for the slides folder")
+			slides_folder="."
+		else:
+			slides_folder=config.get("folders","slides")
+
+		if config.get("folders","downsamples")==None:
+			print("Defult value \".downsamples\" for the downsamples folder")
+			downsamples_folder="."
+		else:
+			downsamples_folder=config.get("folders","downsamples")
+			
+
+		if config.get("folders","bcfs")==None:
+			print("Defult value \".bcfs\" for the bcfs folder")
+			bcfs_folder="."
+		else:
+			bcfs_folder=config.get("folders","bcfs")
+
+
+	make_sure_path_exists(downsamples_folder)
+	make_sure_path_exists(bcfs_folder)
+	#folders checked
+	
 	#here, we start to check slides
 
 	if "slides" not in config.sections():
@@ -123,7 +182,7 @@ def main():
 	slides=config.options("slides")
 
 	for slide in slides:
-		if not os.path.exists(slide):
+		if not os.path.exists(os.path.join(slides_folder,slide)):
 			print("Cannot open slide: "+slide+" .")
 			sys.exit(1)
 		#file exist
@@ -139,6 +198,7 @@ def main():
 		
 	#we checked slides and we know bams and sams
 
+	#checkin downsampling
 	if "downsampling" not in config.sections():
 		print("no downsampling section section in "+sys.argv[1]+" .")
 		sys.exit(1)
@@ -147,42 +207,118 @@ def main():
 		try:
 			scale_int=int(scale)
 			scale_int + 1 #test for int, do nothing if OK
-		except TypeError:
+		except:
 			print("Downsampling scale "+scale+" is not an integer.\n")
 			sys.exit(1)
 		repeats=config["downsampling"][scale]
 		try:
 			repeats=int(repeats)
 			repeats + 1 #test for int, do nothing if OK
-		except TypeError:
+		except:
 			print("Downsampling repeats at scale "+scale+" is "+repeats+" and it is not an integer.\n")
 			sys.exit(1)
 		downsamples[scale_int]=repeats
 				
 
+	#cores is cores value in flow section
 	if "flow" not in config.sections():
-		print("no flow section section in "+sys.argv[1]+" . Is it OK?")
-
-
-	if "program_folders" not in config.sections():
-		print("no program_folders section section in "+sys.argv[1]+" . Is it OK?")
+		print("No flow section section in "+sys.argv[1]+" . I suppose 2 cores and random_seed is \"circumambulate\". Is it OK?")
+		cores=2
+	else:
+		if config.get("flow","cores") == None:
+			print("No cores value in flow section section in "+sys.argv[1]+" . I suppose 2 cores. Is it OK?")
+			cores=2
+			random_seed="circumambulate"	
+		else:
+			try:
+				cores_string=config.get("flow","cores")
+				cores=int(cores_string)
+				cores+1 + 1 #test for int, do nothing if OK
+			except:
+				print("Cores value "+cores_string+" is not an integer. I suppose 2 cores. Is it OK?")
+				cores=2
+		if config.get("flow","random_seed") == None:
+			print("No random_seed value in flow section section in "+sys.argv[1]+" . I suppose it is \"circumambulate\". Is it OK?")
+			random_seed="circumambulate"
+		else:
+			random_seed=config.get("flow","random_seed")
+	#cores and random seed set
+	
+	#executable programs
+	if "tool_paths" not in config.sections():
+		print("No tool_paths section section in "+sys.argv[1]+" . Is it OK?")
 		samtools=fulltoolname('samtools')
 		downSAM=fulltoolname('downSAM')
 		bcftools=fulltoolname('bcftools')
 	else:	
-		samtools=fulltoolname('samtools',config["program_folders"].get("samtools"))
-		downSAM=fulltoolname('downSAM',config["program_folders"].get("downSAM"))
-		bcftools=fulltoolname('bcftools',config["program_folders"].get("bcftools"))
+		samtools=fulltoolname('samtools',config["tool_paths"].get("samtools"))
+		downSAM=fulltoolname('downSAM',config["tool_paths"].get("downSAM"))
+		bcftools=fulltoolname('bcftools',config["tool_paths"].get("bcftools"))
+	#executable programs set
 
+	print("slide names=",slide_names)
+	print("downsamplin shedule=",downsamples)
+	print("downSAM=",downSAM)
+	print("samtools=",samtools)
+	print("bcftools=",bcftools)
+	print("cores=",cores)
+	print("slides folder=",slides_folder)
+	print("bcfs folder=",bcfs_folder)
+	print("downsamples folder=",downsamples_folder)
 
+	# we know everything
+	#lets do something
+	#if a file exist 
+	#and it is not zero-length
+	#we do not generate the command
+	#let's make a list of commands to downsample
 
-
-	print(slide_names)
-	print(downsamples)
-	print(downSAM)
-	print(samtools)
-	print(bcftools)
-
+	pool=Pool(cores)
+	#first, we convert all sams to bams
+	commands=[]
+	for i in range(0,len(if_bam)):
+		if not if_bam[i]:
+			commands.append("cd "+slides_folder+"; "+samtools+" view -Sbh "+slide_names[i]+".sam > "+slide_names[i]+".bam")
+	#cd slides_folder; samtools view -Sbh slide.sam > slide.bam	
+	pool.map(run_command,commands)
+	pool.close()
+	pool.join()
+	sys.stdout.flush()
+	commands[:]=[] #clean commands
+	#sams to bams converted
+	random.seed(random_seed)
+	for slide in slide_names:
+	#first, we copy slide to downsamples_folder with _down_by_1_repl_1
+	#sort it and index it
+		slide_1_1=os.path.join(downsamples_folder,downsampled_name(slide,1,1))
+		flag=slide_1_1+".downsampled"
+		if not os.path.isfile(flag):
+			run_command(samtools+" sort "+os.path.join(slides_folder,slide+".bam")+" "+slide_1_1+"; "+samtools+" index "+slide_1_1+".bam; touch "+flag)
+		for scale in downsamples.keys():
+			for repl in range(downsamples[scale]):
+				ofile_name=os.path.join(downsamples_folder,downsampled_name(slide,scale,repl+1)) # range generates 0-based
+				flag=ofile_name+".downsampled"
+				seed1=random.randint(1,100000)
+				seed2=random.randint(1,100000)
+				if not os.path.isfile(flag): # we do not rewrite
+					command=ofile_name+" "+"{}".format(seed1)+" "+"{}".format(seed2)
+					print ("Prepare \'"+command+"\'")
+	#my $downSAM_string="$downSAM_folder"."downSAM --downSAM.one_from_reads $downmult --downSAM.random_state_file $random_state_file --downSAM.sample_id_postfix $sample_id_postfix < $alingment_file_name.sam | $samtools_folder"."samtools view -Sbh -  >  $alingment_file_name_local.u.bam ";
+	#system($downSAM_string) == 0 or die ("Downsampling failed: $?\n");
+	#print("#Sorting ... ");
+	#system("$samtools_folder"."samtools sort $alingment_file_name_local.u.bam $alingment_file_name_local")  == 0 or die ("Samtools sort failed: $?\n") ;
+	#unlink "$alingment_file_name_local.u.bam";
+	#print("indexing ... ");
+	#system("$samtools_folder"."samtools index $alingment_file_name_local.bam")  == 0 or die ("Samtools index failed: $?\n") ;
+	#print "done.\n";
+	#
+	print()
+	#and run it all through our pooling system
+	#wait for rhem all to return
+	#let's make a list of command for bcf
+	#and pool them
+	#and wait
+	#see you!
 
 	sys.exit(0)
 
