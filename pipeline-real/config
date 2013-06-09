@@ -11,6 +11,9 @@ slide3.sam
 [flow]
 cores:2
 random_seed=circumambulate
+id=tester_1
+[reference]
+chr1_gl000192_random.fa.gz
 [tool_paths]
 #program prefix (path); their defaults are "" (look in path)
 downSAM:../downSAM

@@ -28,6 +28,9 @@ slide_3_normal.bam
 [flow]
 cores:16
 random_seed=circumambulate
+id=test_run
+[reference]
+chr1_gl000192_random.fa.gz
 [tool_paths]
 #program prefix (path); their defaults are ""
 downSAM:
@@ -221,15 +224,16 @@ def main():
 		downsamples[scale_int]=repeats
 				
 
-	#cores is cores value in flow section
+	#flow section
 	if "flow" not in config.sections():
-		print("No flow section section in "+sys.argv[1]+" . I suppose 2 cores and random_seed is \"circumambulate\". Is it OK?")
+		print("No flow section section in "+sys.argv[1]+" . I suppose 2 cores, id=\"test_run\" and random_seed is \"circumambulate\". Is it OK?")
 		cores=2
+		random_seed="circumambulate"
+		id="test_run"
 	else:
-		if config.get("flow","cores") == None:
+		if config["flow"].get("cores") == None:
 			print("No cores value in flow section section in "+sys.argv[1]+" . I suppose 2 cores. Is it OK?")
 			cores=2
-			random_seed="circumambulate"	
 		else:
 			try:
 				cores_string=config.get("flow","cores")
@@ -238,13 +242,34 @@ def main():
 			except:
 				print("Cores value "+cores_string+" is not an integer. I suppose 2 cores. Is it OK?")
 				cores=2
-		if config.get("flow","random_seed") == None:
+		if config["flow"].get("random_seed") == None:
 			print("No random_seed value in flow section section in "+sys.argv[1]+" . I suppose it is \"circumambulate\". Is it OK?")
 			random_seed="circumambulate"
 		else:
 			random_seed=config.get("flow","random_seed")
-	#cores and random seed set
-	
+		
+		if config["flow"].get("id") == None:
+			print("No id value in flow section section in "+sys.argv[1]+" . I suppose it is \"test_run\". Is it OK?")
+			id="test_run"
+		else:
+			id=config.get("flow","id")
+	#cores,id and random seed set
+
+
+	#reference
+	if "reference" not in config.sections():
+		print ("Cannot work without reference ([reference])\n")
+		sys.exit(1)
+	ref=config.options("reference")
+	if not len(ref)==1:
+		print ("I need one reference reference in [reference] section\n")
+		sys.exit(1)
+	reference=ref[0]
+	if not os.path.isfile(reference):
+		print ("Reference file \""+reference+"\" does not exist.\n")
+		sys.exit(1)
+	#reference exists
+
 	#executable programs
 	if "tool_paths" not in config.sections():
 		print("No tool_paths section section in "+sys.argv[1]+" . Is it OK?")
@@ -257,6 +282,7 @@ def main():
 		bcftools=fulltoolname('bcftools',config["tool_paths"].get("bcftools"))
 	#executable programs set
 
+	print("id=",id)
 	print("slide names=",slide_names)
 	print("downsamplin shedule=",downsamples)
 	print("downSAM=",downSAM)
@@ -266,6 +292,7 @@ def main():
 	print("slides folder=",slides_folder)
 	print("bcfs folder=",bcfs_folder)
 	print("downsamples folder=",downsamples_folder)
+	print("reference=",reference)
 
 	# we know everything
 	#lets do something
@@ -278,12 +305,14 @@ def main():
 	#first, we convert all sams to bams
 	commands=[]
 	for i in range(0,len(if_bam)):
-		if not if_bam[i]:
+		if not if_bam[i] and not os.path.isfile(os.path.join(slides_folder,slide_names[i]+".bam")):
 			commands.append("cd "+slides_folder+"; "+samtools+" view -Sbh "+slide_names[i]+".sam > "+slide_names[i]+".bam")
 	#cd slides_folder; samtools view -Sbh slide.sam > slide.bam	
-	pool.map(run_command,commands)
+	if len(commands)>0:
+		pool.map(run_command,commands)
 	pool.close()
 	pool.join()
+	del(pool)
 	sys.stdout.flush()
 	commands[:]=[] #clean commands
 	#sams to bams converted
@@ -298,7 +327,7 @@ def main():
 			os.unlink(flag) # if index is bad, redo
 		if not os.path.isfile(flag):
 			run_command(samtools+" sort "+os.path.join(slides_folder,slide+".bam")+" "+slide_1_1+"; "+samtools+" index "+slide_1_1+".bam; touch "+flag)
-		for scale in downsamples.keys():
+		for scale in sorted(downsamples.keys()):
 			for repl in range(downsamples[scale]):
 				sample_id_postfix="-ds"+str(scale)+"-r"+str(repl+1)
 				ofile_name=os.path.join(downsamples_folder,downsampled_name(slide,scale,repl+1)) # range generates 0-based
@@ -313,23 +342,41 @@ def main():
 					#print ("Prepare \'"+command+"\'")
 					commands.append(command)
 	pool=Pool(cores)
-	pool.map(run_command,commands)
+	if len(commands)>0:
+		pool.map(run_command,commands)
 	#and run it all through our pooling system
 	#wait for rhem all to return
 	pool.close()
 	pool.join()
+	del(pool)
 	sys.stdout.flush()
 	commands[:]=[] #clean commands
 	#bams downsampled
-	#my $downSAM_string="$downSAM_folder"."downSAM --downSAM.one_from_reads $downmult --downSAM.random_state_file $random_state_file --downSAM.sample_id_postfix $sample_id_postfix < $alingment_file_name.sam | $samtools_folder"."samtools view -Sbh -  >  $alingment_file_name_local.u.bam ";
-	#system($downSAM_string) == 0 or die ("Downsampling failed: $?\n");
-	#print("#Sorting ... ");
-	#system("$samtools_folder"."samtools sort $alingment_file_name_local.u.bam $alingment_file_name_local")  == 0 or die ("Samtools sort failed: $?\n") ;
-	#unlink "$alingment_file_name_local.u.bam";
-	#print("indexing ... ");
-	#system("$samtools_folder"."samtools index $alingment_file_name_local.bam")  == 0 or die ("Samtools index failed: $?\n") ;
-	#print "done.\n";
-	#
+	#and now, bcfs.....
+	downsamples[1]=1 # to call original in standard framework
+	for scale in sorted(downsamples.keys()):
+		for repl in range(downsamples[scale]):
+			bamliststring=" "
+			bcffilename=os.path.join(bcfs_folder,downsampled_name(id,scale,repl+1)+".bcf")
+			flag=os.path.join(bcfs_folder,downsampled_name(id,scale,repl+1)+".called")
+
+			if not os.path.isfile(flag): # we do not rewrite
+				for slide in slide_names:
+					bampath=os.path.join(downsamples_folder,downsampled_name(slide,scale,repl+1)+".bam")
+					bamliststring=bamliststring+bampath+" "
+				command=samtools+" mpileup -uf "+reference+bamliststring+" | bcftools view -bcvg - > "+bcffilename+" && touch "+flag 
+				commands.append(command)
+				#./samtools mpileup -uf chr1_gl000192_random.fa.gz buegyrshlopak.bam | ./bcftools view -bcvg - > mapped.calls-bue.bcf
+	pool=Pool(cores)
+	if len(commands)>0:
+		pool.map(run_command,commands)
+	#and run it all through our pooling system
+	#wait for rhem all to return
+	pool.close()
+	pool.join()
+	del(pool)
+	sys.stdout.flush()
+	commands[:]=[] #clean commands
 	print()
 	#and run it all through our pooling system
 	#wait for rhem all to return
