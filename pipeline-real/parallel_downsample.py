@@ -366,7 +366,6 @@ def main():
 					bamliststring=bamliststring+bampath+" "
 				command=samtools+" mpileup -uf "+reference+bamliststring+" | bcftools view -bcvg - > "+bcffilename+" && touch "+flag 
 				commands.append(command)
-				#./samtools mpileup -uf chr1_gl000192_random.fa.gz buegyrshlopak.bam | ./bcftools view -bcvg - > mapped.calls-bue.bcf
 	pool=Pool(cores)
 	if len(commands)>0:
 		pool.map(run_command,commands)
@@ -387,13 +386,6 @@ def main():
 
 	sys.exit(0)
 
-	for sec in config.sections():
-		print ("[{}]".format(sec))
-		for opt in config.options(sec):
-			if (config.get(sec,opt)==None):
-				print ("{}".format(opt))
-			else:
-				print ("{}:{}".format(opt,config.get(sec,opt)))
 
 #here, we finally run it all :)
 if __name__ == "__main__":
