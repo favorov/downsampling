@@ -22,8 +22,9 @@ slide_2_normal.bam
 slide_3_normal.bam
 [downsampling]
 #dowsampling schedule each line is level(1 out for level in):runs
-10:2
-100:5
+2:2
+5:5
+10:10
 [flow]
 cores:16
 random_seed=circumambulate
@@ -292,17 +293,34 @@ def main():
 	#sort it and index it
 		slide_1_1=os.path.join(downsamples_folder,downsampled_name(slide,1,1))
 		flag=slide_1_1+".downsampled"
+		index_name=slide_1_1+".bam.bai"
+		if os.path.isfile(flag) and ((not os.path.isfile(index_name)) or os.stat(index_name).st_size==0):
+			os.unlink(flag) # if index is bad, redo
 		if not os.path.isfile(flag):
 			run_command(samtools+" sort "+os.path.join(slides_folder,slide+".bam")+" "+slide_1_1+"; "+samtools+" index "+slide_1_1+".bam; touch "+flag)
 		for scale in downsamples.keys():
 			for repl in range(downsamples[scale]):
+				sample_id_postfix="-ds"+str(scale)+"-r"+str(repl+1)
 				ofile_name=os.path.join(downsamples_folder,downsampled_name(slide,scale,repl+1)) # range generates 0-based
 				flag=ofile_name+".downsampled"
-				seed1=random.randint(1,100000)
-				seed2=random.randint(1,100000)
+				seed1=str(random.randint(1,1000000))
+				seed2=str(random.randint(1,1000000))
+				index_name=ofile_name+".bam.bai"
+				if os.path.isfile(flag) and ((not os.path.isfile(index_name)) or os.stat(index_name).st_size==0):
+					os.unlink(flag) # if index is bad, redo
 				if not os.path.isfile(flag): # we do not rewrite
-					command=ofile_name+" "+"{}".format(seed1)+" "+"{}".format(seed2)
-					print ("Prepare \'"+command+"\'")
+					command=samtools+" view -h "+slide_1_1+".bam | "+downSAM+" --downSAM.one_from_reads "+str(scale)+" --downSAM.random_seed_1 "+seed1+" --downSAM.random_seed_2 "+seed2+" --downSAM.sample_id_postfix "+sample_id_postfix+" | samtools view -Sbh - > "+ofile_name+".bam && "+samtools+" index "+ofile_name+".bam && touch "+flag  
+					#print ("Prepare \'"+command+"\'")
+					commands.append(command)
+	pool=Pool(cores)
+	pool.map(run_command,commands)
+	#and run it all through our pooling system
+	#wait for rhem all to return
+	pool.close()
+	pool.join()
+	sys.stdout.flush()
+	commands[:]=[] #clean commands
+	#bams downsampled
 	#my $downSAM_string="$downSAM_folder"."downSAM --downSAM.one_from_reads $downmult --downSAM.random_state_file $random_state_file --downSAM.sample_id_postfix $sample_id_postfix < $alingment_file_name.sam | $samtools_folder"."samtools view -Sbh -  >  $alingment_file_name_local.u.bam ";
 	#system($downSAM_string) == 0 or die ("Downsampling failed: $?\n");
 	#print("#Sorting ... ");
