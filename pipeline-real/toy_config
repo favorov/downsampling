@@ -27,4 +27,4 @@ downsamples:downsamples
 #default is "bcfs"
 bcfs:bcfs
 #default is .
-slides:.
+slides:..

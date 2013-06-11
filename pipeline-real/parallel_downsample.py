@@ -189,7 +189,7 @@ def main():
 	for slide in slides:
 		fullslidename=os.path.join(slides_folder,slide)
 		if not os.path.exists(fullslidename):
-			print("Cannot open slide: "+slide+" .")
+			print("Cannot open slide: "+fullslidename+" .")
 			sys.exit(1)
 		#file exist
 		if re.search(r"\.bam$",slide):
