@@ -185,8 +185,10 @@ def main():
 
 	slides=config.options("slides")
 
+
 	for slide in slides:
-		if not os.path.exists(os.path.join(slides_folder,slide)):
+		fullslidename=os.path.join(slides_folder,slide)
+		if not os.path.exists(fullslidename):
 			print("Cannot open slide: "+slide+" .")
 			sys.exit(1)
 		#file exist
