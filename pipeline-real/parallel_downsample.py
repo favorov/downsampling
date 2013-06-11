@@ -316,7 +316,6 @@ def main():
 	sys.stdout.flush()
 	commands[:]=[] #clean commands
 	#sams to bams converted
-	random.seed(random_seed)
 	for slide in slide_names:
 	#first, we copy slide to downsamples_folder with _down_by_1_repl_1
 	#sort it and index it
@@ -327,7 +326,19 @@ def main():
 			os.unlink(flag) # if index is bad, redo
 		if not os.path.isfile(flag):
 			run_command(samtools+" sort "+os.path.join(slides_folder,slide+".bam")+" "+slide_1_1+"; "+samtools+" index "+slide_1_1+".bam; touch "+flag)
+		#Random seeding logic:
+		#we start each downsample with a new seed (--downSAM.random_seed_1 and 2)
+		#the seed is obtained from python random
+		#python random for each downsampling scale and slide in inited with random_seed+"_"+slide_name+"_down_"+str(scale)
+
+		#so, each scale has its own generator history.
+		#each scale is reproducible; its results does not depend on other scales
+		#each scale is extesible: if we already has some downsamples and ther increase repeats for this scale, 
+		#the old ones will remain, so we are not to rerun it.
+
 		for scale in sorted(downsamples.keys()):
+			random_seed_loc=random_seed+"_"+slide+"_d_"+str(scale)
+			random.seed(random_seed_loc)
 			for repl in range(downsamples[scale]):
 				sample_id_postfix="-ds"+str(scale)+"-r"+str(repl+1)
 				ofile_name=os.path.join(downsamples_folder,downsampled_name(slide,scale,repl+1)) # range generates 0-based

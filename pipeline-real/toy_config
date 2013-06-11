@@ -1,8 +1,8 @@
 [slides]
 #list of slides, they will be merged on run
-slide1.sam
-slide2.sam
-slide3.sam
+192_toy_slide1.sam
+192_toy_slide2.sam
+192_toy_slide3.sam
 [downsampling]
 #dowsampling schedule each line is level(1 out for level in):runs
 2:2
@@ -11,7 +11,7 @@ slide3.sam
 [flow]
 cores:2
 random_seed=circumambulate
-id=tester_1
+id=toy_example
 [reference]
 chr1_gl000192_random.fa.gz
 [tool_paths]
