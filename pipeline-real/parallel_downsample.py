@@ -144,6 +144,7 @@ def main():
 		sys.exit(1)
 
 	config = configparser.ConfigParser(allow_no_value=True)
+	config.optionxform = str #to be case-preserveing
 	config.read(sys.argv[1])
 
 	#folders for data, slides, etc

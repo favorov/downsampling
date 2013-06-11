@@ -1,8 +1,8 @@
 [slides]
 #list of slides, they will be merged on run
-192_toy_slide1.sam
-192_toy_slide2.sam
-192_toy_slide3.sam
+192_toy_Slide1.sam
+192_toy_Slide2.sam
+192_toy_Slide3.sam
 [downsampling]
 #dowsampling schedule each line is level(1 out for level in):runs
 2:2
@@ -27,4 +27,4 @@ downsamples:downsamples
 #default is "bcfs"
 bcfs:bcfs
 #default is .
-slides:..
+slides:.
