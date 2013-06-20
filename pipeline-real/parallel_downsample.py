@@ -314,6 +314,7 @@ def main():
 	print("pileups folder=",pileups_folder)
 	print("bcfs folder=",bcfs_folder)
 	print("downsamples folder=",downsamples_folder)
+	print("flags folder=",flags_folder)
 	print("reference=",reference)
 
 	# we know everything
