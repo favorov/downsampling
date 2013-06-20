@@ -19,12 +19,12 @@ chr1_gl000192_random.fa.gz
 downSAM:../downSAM
 samtools:
 bcftools:
-[folders]
+#[folders]
 #defaults is scripts
-scripts:scripts
+#scripts:scripts
 #default is "downsamples"
-downsamples:downsamples
+#downsamples:downsamples
 #default is "bcfs"
-bcfs:bcfs
+#bcfs:bcfs
 #default is .
-slides:.
+#slides:.
