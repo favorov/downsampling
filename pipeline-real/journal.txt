@@ -151,3 +151,29 @@ The plan is:
 1) Parallel downsampling script for a set of slides
 2) prepare testsiute
 3) parallel bcftools call for results of downsampling
+
+May 22
+We start to write it in python3
+config file for parralel downsampling is:
+level:num_of_runs - so we can maintain complicated schedules
+
+May 27 
+going on...
+parameters....
+
+May 29
+svn add
+
+Jun 9
+reference: ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference
+ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/human_g1k_v37.fasta.gz
+
+June 11
+Random seeding logic:
+we start each downsample with a new seed (--downSAM.random_seed_1 and 2)
+the seed is obtained from python random
+python random for each downsampling scale in inited with random_seed+slide_name"_down_"+str(scale)
+
+so, each slide+scale has its own generator history.
+each slide+scale is reproducible; its results does not depend on other scales
+each slide+scale is extesible: if we already has some downsamples and ther increase repeats for this scale, the old ones will remain, so we are not to rerun it.
