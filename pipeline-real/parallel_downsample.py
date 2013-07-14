@@ -39,8 +39,6 @@ bcftools:
 [folders]
 #default is "downsamples"
 downsamples:downsamples
-#default is "pileups"
-pileups:pileups
 #default is "bcfs"
 bcfs:bcfs
 #deafuult is .flags
@@ -151,9 +149,8 @@ def main():
 
 	#folders for data, slides, etc
 	if "folders" not in config.sections():
-		print("No folders section section in "+sys.argv[1]+" . I will post defaults:\n \".\" for slides, \"./pileups\" for pileups,  \"./.flags\" for flags , \"./bcfs\" for bcfs, \"./downsamples\" for downsamples. Is it OK?")
+		print("No folders section section in "+sys.argv[1]+" . I will post defaults:\n \".\" for slides,  \"./.flags\" for flags , \"./bcfs\" for bcfs, \"./downsamples\" for downsamples. Is it OK?")
 		slides_folder="."
-		pileups_folder="./pileups"
 		bcfs_folder="./bcfs"
 		downsamples_folder="./downsamples"
 		flags_folder="./.flags"
@@ -178,21 +175,14 @@ def main():
 			bcfs_folder=config.get("folders","bcfs")
 
 
-		if config["folders"].get("pileups")==None:
-			print("Defult value \"./pileups\" for the pileups folder")
-			pileups_folder="./pileups"
-		else:
-			pileups_folder=config.get("folders","pileups")
-
 		if config["folders"].get("flags")==None:
-			print("Defult value \"./.flags\" for the pileups folder")
+			print("Defult value \"./.flags\" for the flags folder")
 			flags_folder="./.flags"
 		else:
 			flags_folder=config.get("folders","flags")
 
 	make_sure_path_exists(downsamples_folder)
 	make_sure_path_exists(bcfs_folder)
-	make_sure_path_exists(pileups_folder)
 	make_sure_path_exists(flags_folder)
 	#folders checked
 	
@@ -311,7 +301,6 @@ def main():
 	print("bcftools=",bcftools)
 	print("cores=",cores)
 	print("slides folder=",slides_folder)
-	print("pileups folder=",pileups_folder)
 	print("bcfs folder=",bcfs_folder)
 	print("downsamples folder=",downsamples_folder)
 	print("flags folder=",flags_folder)
@@ -402,20 +391,20 @@ def main():
 	sys.stdout.flush()
 	commands[:]=[] #clean commands
 	#bams downsampled
-	#and now, pileups.....
+	#and now, bcfs.....
 	downsamples[1]=1 # to call original in standard framework
 	for scale in sorted(downsamples.keys()):
 		for repl in range(downsamples[scale]):
 			bamliststring=" "
 			shortfilename=downsampled_name(id,scale,repl+1)
-			pileupfilename=os.path.join(pileups_folder,shortfilename+".pileup.gz")
-			flag=os.path.join(flags_folder,shortfilename+".pileuped")
+			bcffilename=os.path.join(bcfs_folder,shortfilename+".bcf")
+			flag=os.path.join(flags_folder,shortfilename+".called")
 
 			if not os.path.isfile(flag): # we do not rewrite
 				for slide in slide_names:
 					bampath=os.path.join(downsamples_folder,downsampled_name(slide,scale,repl+1)+".bam")
 					bamliststring=bamliststring+bampath+" "
-				command=samtools+" mpileup -uf "+reference+bamliststring+" | gzip -c > "+pileupfilename+" && touch "+flag 
+				command=samtools+" mpileup -uf "+reference+bamliststring+" | "+bcftools+" view -bcvg - > "+bcffilename+" && touch "+flag
 				commands.append(command)
 	pool=Pool(cores)
 	if len(commands)>0:
@@ -433,28 +422,6 @@ def main():
 	#and pool them
 	#and wait
 	#see you!
-	#and now, bcfs.....
-	downsamples[1]=1 # to call original in standard framework
-	for scale in sorted(downsamples.keys()):
-		for repl in range(downsamples[scale]):
-			shortfilename=downsampled_name(id,scale,repl+1)
-			pileupfilename=os.path.join(pileups_folder,shortfilename+".pileup.gz")
-			bcffilename=os.path.join(bcfs_folder,shortfilename+".bcf")
-			flag=os.path.join(flags_folder,shortfilename+".called")
-
-			if not os.path.isfile(flag): # we do not rewrite
-				command="gzip -dc "+pileupfilename+" | "+bcftools+" view -bcvg - > "+bcffilename+" && touch "+flag 
-				commands.append(command)
-	pool=Pool(cores)
-	if len(commands)>0:
-		pool.map(run_command,commands)
-	#and run it all through our pooling system
-	#wait for rhem all to return
-	pool.close()
-	pool.join()
-	del(pool)
-	sys.stdout.flush()
-	commands[:]=[] #clean commands
 	print()
 	#and run it all through our pooling system
 	#wait for rhem all to return
