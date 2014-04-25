@@ -67,6 +67,7 @@ def fulltoolname(toolname,toolpath=None):
 			sys.exit(1)
 	else: #folder is given, we are to add it and to test it
 		resultfulltoolname=os.path.join(toolpath,toolname)
+		print("------"+resultfulltoolname)
 	if not os.path.isfile(resultfulltoolname): #here, we test that file exist
 		print("The file "+resultfulltoolname+" does not exist... trying which...")
 		return fulltoolname(toolname) #trying which	
@@ -156,27 +157,27 @@ def main():
 		flags_folder="./.flags"
 	else:
 		if config["folders"].get("slides")==None:
-			print("Defult value \".\" for the slides folder")
+			print("Default value \".\" for the slides folder")
 			slides_folder="."
 		else:
 			slides_folder=config.get("folders","slides")
 
 		if config["folders"].get("downsamples")==None:
-			print("Defult value \".downsamples\" for the downsamples folder")
+			print("Default value \".downsamples\" for the downsamples folder")
 			downsamples_folder="./downsamples"
 		else:
 			downsamples_folder=config.get("folders","downsamples")
 			
 
 		if config["folders"].get("bcfs")==None:
-			print("Defult value \"./bcfs\" for the bcfs folder")
+			print("Default value \"./bcfs\" for the bcfs folder")
 			bcfs_folder="./bcfs"
 		else:
 			bcfs_folder=config.get("folders","bcfs")
 
 
 		if config["folders"].get("flags")==None:
-			print("Defult value \"./.flags\" for the flags folder")
+			print("Default value \"./.flags\" for the flags folder")
 			flags_folder="./.flags"
 		else:
 			flags_folder=config.get("folders","flags")
@@ -377,7 +378,7 @@ def main():
 				if os.path.isfile(flag) and ((not os.path.isfile(index_name)) or os.stat(index_name).st_size==0):
 					os.unlink(flag) # if index is bad, redo
 				if not os.path.isfile(flag): # we do not rewrite
-					command=samtools+" view -h "+slide_1_1+".bam | "+downSAM+" --downSAM.one_from_reads "+str(scale)+" --downSAM.random_seed_1 "+seed1+" --downSAM.random_seed_2 "+seed2+" --downSAM.sample_id_postfix "+sample_id_postfix+" | samtools view -Sbh - > "+ofile_name+".bam && "+samtools+" index "+ofile_name+".bam && touch "+flag  
+					command=samtools+" view -h "+slide_1_1+".bam | "+downSAM+" --downSAM.one_from_reads "+str(scale)+" --downSAM.random_seed_1 "+seed1+" --downSAM.random_seed_2 "+seed2+" --downSAM.sample_id_postfix "+sample_id_postfix+" | " +samtools+" view -Sbh - > "+ofile_name+".bam && "+samtools+" index "+ofile_name+".bam && touch "+flag  
 					#print ("Prepare \'"+command+"\'")
 					commands.append(command)
 	pool=Pool(cores)

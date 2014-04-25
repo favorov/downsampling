@@ -1,8 +1,8 @@
 [slides]
 #list of slides, they will be merged on run
-192_toy_Slide1.sam
-192_toy_Slide2.sam
-192_toy_Slide3.sam
+192_toy_Slide1.bam
+192_toy_Slide2.bam
+192_toy_Slide3.bam
 [downsampling]
 #dowsampling schedule each line is level(1 out for level in):runs
 2:2
@@ -16,7 +16,7 @@ id=toy_example
 chr1_gl000192_random.fa.gz
 [tool_paths]
 #program prefix (path); their defaults are "" (look in path)
-downSAM:../downSAM
+downSAM:../downSAM/
 samtools:
 bcftools:
 #[folders]
