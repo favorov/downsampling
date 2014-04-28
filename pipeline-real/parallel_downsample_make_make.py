@@ -41,18 +41,14 @@ bcftools:
 downsamples:downsamples
 #default is "bcfs"
 bcfs:bcfs
-#deafuult is .flags
-flags: .bcfs
 #default is .
 slides:."""
 	print(sample_config)
 	return
 
-def run_command(command):
-	print("Running: \'"+command+"\'")
-	if (really_execute):
-		subprocess.call(command,shell=True)
-	print("Finished: \'"+command+"\'")
+def write_command(depend,source,command):
+	print(depend+":"+source)	
+	print("\t"+command)
 
 def fulltoolname(toolname,toolpath=None):
 	if toolpath==None or toolpath=="":
@@ -63,18 +59,18 @@ def fulltoolname(toolname,toolpath=None):
 			if not resultfulltoolname:
 				raise Exception("Empty which return") #exception is stupid, I do not know python system of throw/catch
 		except:
-			print("Which did not find "+toolname+" and its folder is not correctly given in config. So what?")
+			print("Which did not find "+toolname+" and its folder is not correctly given in config. So what?",file=sys.stderr)
 			sys.exit(1)
 	else: #folder is given, we are to add it and to test it
 		resultfulltoolname=os.path.join(toolpath,toolname)
-		print("------"+resultfulltoolname)
+		print("------"+resultfulltoolname,file=sys.stderr)
 	if not os.path.isfile(resultfulltoolname): #here, we test that file exist
-		print("The file "+resultfulltoolname+" does not exist... trying which...")
+		print("The file "+resultfulltoolname+" does not exist... trying which...",file=sys.stderr)
 		return fulltoolname(toolname) #trying which	
 	if subprocess.call("[ -x "+resultfulltoolname+" ]",shell=True): 
 	#we test that it is exec, the thing return 0 if it is OK
 	#if test returned 1, it file is not exec
-		print("The file "+resultfulltoolname+" is not executable. ... trying which...")
+		print("The file "+resultfulltoolname+" is not executable. ... trying which...",file=sys.stderr)
 		return fulltoolname(toolname) #trying which	
 	return resultfulltoolname
 
@@ -129,7 +125,7 @@ def main():
 		sys.exit(0)
 
 	if len(sys.argv)>2:
-		print ("\nToo many paraneters!\n")
+		print ("\nToo many paraneters!\n",file=sys.stderr)
 		sys.exit(1)
 
 	if sys.argv[1] in ["--help","--h","-h","-?","-help"]:
@@ -141,56 +137,57 @@ def main():
 		sys.exit(0)
 
 	if not os.path.exists(sys.argv[1]):
-		print ("Cannot open config "+sys.argv[1]+".")
+		print ("Cannot open config "+sys.argv[1]+".",file=sys.stderr)
 		sys.exit(1)
 
 	config = configparser.ConfigParser(allow_no_value=True)
 	config.optionxform = str #to be case-preserveing
 	config.read(sys.argv[1])
 
+	logname=sys.argv[1]+'.log'
+	sys.stderr = open(logname, 'w')
+	print('#Coverage project. \n#We generate makefile for downsamling \n#the configuration file is '+sys.argv[1])
+	print('#The log/error messages are in ' +logname)
+
 	#folders for data, slides, etc
 	if "folders" not in config.sections():
-		print("No folders section section in "+sys.argv[1]+" . I will post defaults:\n \".\" for slides,  \"./.flags\" for flags , \"./bcfs\" for bcfs, \"./downsamples\" for downsamples. Is it OK?")
+		print("No folders section section in "+sys.argv[1]+" . I will post defaults:\n \".\" for slides,  \"./bcfs\" for bcfs, \"./downsamples\" for downsamples. Is it OK?",file=sys.stderr)
 		slides_folder="."
 		bcfs_folder="./bcfs"
 		downsamples_folder="./downsamples"
-		flags_folder="./.flags"
 	else:
 		if config["folders"].get("slides")==None:
-			print("Default value \".\" for the slides folder")
+			print("Default value \".\" for the slides folder",file=sys.stderr)
 			slides_folder="."
 		else:
 			slides_folder=config.get("folders","slides")
 
 		if config["folders"].get("downsamples")==None:
-			print("Default value \".downsamples\" for the downsamples folder")
+			print("Default value \".downsamples\" for the downsamples folder",file=sys.stderr)
 			downsamples_folder="./downsamples"
 		else:
-			downsamples_folder=config.get("folders","downsamples")
+			downsamples_folder=config.get("folders","downsamples",file=sys.stderr)
 			
 
 		if config["folders"].get("bcfs")==None:
-			print("Default value \"./bcfs\" for the bcfs folder")
+			print("Default value \"./bcfs\" for the bcfs folder",file=sys.stderr)
 			bcfs_folder="./bcfs"
 		else:
 			bcfs_folder=config.get("folders","bcfs")
 
 
-		if config["folders"].get("flags")==None:
-			print("Default value \"./.flags\" for the flags folder")
-			flags_folder="./.flags"
-		else:
-			flags_folder=config.get("folders","flags")
+		if config["folders"].get("flags")!=None:
+			print("The flags option is obsoleted!",file=sys.stderr)
 
+	flags_folder=''
 	make_sure_path_exists(downsamples_folder)
 	make_sure_path_exists(bcfs_folder)
-	make_sure_path_exists(flags_folder)
 	#folders checked
 	
 	#here, we start to check slides
 
 	if "slides" not in config.sections():
-		print("no slides section in "+sys.argv[1]+" .")
+		print("no slides section in "+sys.argv[1]+" .",file=sys.stderr)
 		sys.exit(1)
 
 	slides=config.options("slides")
@@ -199,7 +196,7 @@ def main():
 	for slide in slides:
 		fullslidename=os.path.join(slides_folder,slide)
 		if not os.path.exists(fullslidename):
-			print("Cannot open slide: "+fullslidename+" .")
+			print("Cannot open slide: "+fullslidename+" .",file=sys.stderr)
 			sys.exit(1)
 		#file exist
 		if re.search(r"\.bam$",slide):
@@ -207,7 +204,7 @@ def main():
 		elif re.search(r"\.sam$",slide):
 			if_bam.append(False)
 		else:
-			print("Unknown slide extension"+slide+"\n")
+			print("Unknown slide extension"+slide+"\n",file=sys.stderr)
 			sys.exit(1)
 		#slide name ok
 		slide_names.append(slide[:-4])
@@ -216,7 +213,7 @@ def main():
 
 	#checkin downsampling
 	if "downsampling" not in config.sections():
-		print("no downsampling section section in "+sys.argv[1]+" .")
+		print("no downsampling section section in "+sys.argv[1]+" .",file=sys.stderr)
 		sys.exit(1)
 
 	for scale in config.options("downsampling"):
@@ -224,27 +221,27 @@ def main():
 			scale_int=int(scale)
 			scale_int + 1 #test for int, do nothing if OK
 		except:
-			print("Downsampling scale "+scale+" is not an integer.\n")
+			print("Downsampling scale "+scale+" is not an integer.\n",file=sys.stderr)
 			sys.exit(1)
 		repeats=config["downsampling"][scale]
 		try:
 			repeats=int(repeats)
 			repeats + 1 #test for int, do nothing if OK
 		except:
-			print("Downsampling repeats at scale "+scale+" is "+repeats+" and it is not an integer.\n")
+			print("Downsampling repeats at scale "+scale+" is "+repeats+" and it is not an integer.\n",file=sys.stderr)
 			sys.exit(1)
 		downsamples[scale_int]=repeats
 				
 
 	#flow section
 	if "flow" not in config.sections():
-		print("No flow section section in "+sys.argv[1]+" . I suppose 2 cores, id=\"test_run\" and random_seed is \"circumambulate\". Is it OK?")
+		print("No flow section section in "+sys.argv[1]+" . I suppose, id=\"test_run\" and random_seed is \"circumambulate\". Is it OK?",file=sys.stderr)
 		cores=2
 		random_seed="circumambulate"
 		id="test_run"
 	else:
-		if config["flow"].get("cores") == None:
-			print("No cores value in flow section section in "+sys.argv[1]+" . I suppose 2 cores. Is it OK?")
+		if config["flow"].get("cores") != None:
+			print("The core value is obsoleted; it will be controlled by the system that run the makefile.",file=sys.stderr)
 			cores=2
 		else:
 			try:
@@ -252,16 +249,16 @@ def main():
 				cores=int(cores_string)
 				cores+1 + 1 #test for int, do nothing if OK
 			except:
-				print("Cores value "+cores_string+" is not an integer. I suppose 2 cores. Is it OK?")
+				print("Cores value "+cores_string+" is not an integer. I suppose 2 cores. Is it OK?",file=sys.stderr)
 				cores=2
 		if config["flow"].get("random_seed") == None:
-			print("No random_seed value in flow section section in "+sys.argv[1]+" . I suppose it is \"circumambulate\". Is it OK?")
+			print("No random_seed value in flow section section in "+sys.argv[1]+" . I suppose it is \"circumambulate\". Is it OK?",file=sys.stderr)
 			random_seed="circumambulate"
 		else:
 			random_seed=config.get("flow","random_seed")
 		
 		if config["flow"].get("id") == None:
-			print("No id value in flow section section in "+sys.argv[1]+" . I suppose it is \"test_run\". Is it OK?")
+			print("No id value in flow section section in "+sys.argv[1]+" . I suppose it is \"test_run\". Is it OK?",file=sys.stderr)
 			id="test_run"
 		else:
 			id=config.get("flow","id")
@@ -270,21 +267,21 @@ def main():
 
 	#reference
 	if "reference" not in config.sections():
-		print ("Cannot work without reference ([reference])\n")
+		print ("Cannot work without reference ([reference])\n",file=sys.stderr)
 		sys.exit(1)
 	ref=config.options("reference")
 	if not len(ref)==1:
-		print ("I need one reference reference in [reference] section\n")
+		print ("I need one reference reference in [reference] section\n",file=sys.stderr)
 		sys.exit(1)
 	reference=ref[0]
 	if not os.path.isfile(reference):
-		print ("Reference file \""+reference+"\" does not exist.\n")
+		print ("Reference file \""+reference+"\" does not exist.\n",file=sys.stderr)
 		sys.exit(1)
 	#reference exists
 
 	#executable programs
 	if "tool_paths" not in config.sections():
-		print("No tool_paths section section in "+sys.argv[1]+" . Is it OK?")
+		print("No tool_paths section section in "+sys.argv[1]+" . Is it OK?",file=sys.stderr)
 		samtools=fulltoolname('samtools')
 		downSAM=fulltoolname('downSAM')
 		bcftools=fulltoolname('bcftools')
@@ -294,18 +291,18 @@ def main():
 		bcftools=fulltoolname('bcftools',config["tool_paths"].get("bcftools"))
 	#executable programs set
 
-	print("id=",id)
-	print("slide names=",slide_names)
-	print("downsamplin shedule=",downsamples)
-	print("downSAM=",downSAM)
-	print("samtools=",samtools)
-	print("bcftools=",bcftools)
-	print("cores=",cores)
-	print("slides folder=",slides_folder)
-	print("bcfs folder=",bcfs_folder)
-	print("downsamples folder=",downsamples_folder)
-	print("flags folder=",flags_folder)
-	print("reference=",reference)
+	print("id=",id,file=sys.stderr)
+	print("slide names=",slide_names,file=sys.stderr)
+	print("downsamplin shedule=",downsamples,file=sys.stderr)
+	print("downSAM=",downSAM,file=sys.stderr)
+	print("samtools=",samtools,file=sys.stderr)
+	print("bcftools=",bcftools,file=sys.stderr)
+	#print("cores=",cores,file=sys.stderr)
+	print("slides folder=",slides_folder,file=sys.stderr)
+	print("bcfs folder=",bcfs_folder,file=sys.stderr)
+	print("downsamples folder=",downsamples_folder,file=sys.stderr)
+	#print("flags folder=",flags_folder,file=sys.stderr)
+	print("reference=",reference,file=sys.stderr)
 
 	# we know everything
 	#lets do something
@@ -313,8 +310,41 @@ def main():
 	#and it is not zero-length
 	#we do not generate the command
 	#let's make a list of commands to downsample
+	
+	#at very first, we write the makefile preabule
 
-	pool=Pool(cores)
+	print(".PHONY: all")
+	
+	downsamples[1]=1 # to mention original in standard framework
+
+	#now, we list all the bcfs as all
+	
+	bcfs=[]
+	for scale in sorted(downsamples.keys()):
+		for repl in range(downsamples[scale]):
+			shortfilename=downsampled_name(id,scale,repl+1)
+			bcffilename=os.path.join(bcfs_folder,shortfilename+".bcf")
+			bcfs.append('\t'+bcffilename+' ')
+	print("all: \\")
+	print ("\\\n".join(bcfs))
+	print()	
+	#bcfs need downsamples
+
+	for scale in sorted(downsamples.keys()):
+		for repl in range(downsamples[scale]):
+			bamliststring=" "
+			shortfilename=downsampled_name(id,scale,repl+1)
+			bcffilename=os.path.join(bcfs_folder,shortfilename+".bcf")
+			for slide in slide_names:
+				bampath=os.path.join(downsamples_folder,downsampled_name(slide,scale,repl+1)+".bam")
+				bamliststring=bamliststring+bampath+" "
+			command=samtools+" mpileup -uf "+reference+bamliststring+" | "+bcftools+" view -bcvg - > "+bcffilename
+			print(bcffilename+": "+bamliststring)
+			print("\t"+command)
+	
+	
+	sys.stderr.close()
+	sys.exit(0)
 	#first, we convert all sams to bams
 	commands=[]
 	for i in range(0,len(if_bam)):
@@ -423,7 +453,6 @@ def main():
 	#and pool them
 	#and wait
 	#see you!
-	print()
 	#and run it all through our pooling system
 	#wait for rhem all to return
 	#let's make a list of command for bcf
