@@ -329,7 +329,7 @@ def main():
 	print ("\\\n".join(bcfs))
 	print()	
 	#bcfs need downsamples
-
+	print("#bcfs need downsamples")
 	for scale in sorted(downsamples.keys()):
 		for repl in range(downsamples[scale]):
 			bamliststring=" "
@@ -341,8 +341,9 @@ def main():
 			command=samtools+" mpileup -uf "+reference+bamliststring+" | "+bcftools+" view -bcvg - > "+bcffilename
 			print(bcffilename+": "+bamliststring)
 			print("\t"+command)
-	
-	
+	print()	
+	#downsamples need downsampling from sams
+
 	sys.stderr.close()
 	sys.exit(0)
 	#first, we convert all sams to bams
