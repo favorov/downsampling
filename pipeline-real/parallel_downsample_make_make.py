@@ -328,7 +328,11 @@ def main():
 	print("all: \\")
 	print ("\\\n".join(bcfs))
 	print()	
-	#bcfs need downsamples
+	#bcfs needs downsampled slides;
+	#the slides were dowmsampled separately, now we 
+	#join them 'horizontally' to bake the base calling
+	#each of the bcfs is generated from the list of downasamples
+	#with the same id and ratio, but from differend slides
 	print("#bcfs need downsamples")
 	for scale in sorted(downsamples.keys()):
 		for repl in range(downsamples[scale]):
@@ -344,6 +348,47 @@ def main():
 	print()	
 	#downsamples need downsampling from sams
 
+	#Let's speak about how we get downsamles. It needs a sorted version of each slide (slide_1_1) 
+	#
+	#Random seeding logic:
+	#we start each downsample with a new seed (--downSAM.random_seed_1 and 2)
+	#the seed is obtained from python random
+	#python random for each downsampling scale and slide in inited with random_seed+"_"+slide_name+"_down_"+str(scale)
+
+	#so, each scale has its own generator history.
+	#each scale is reproducible; its results does not depend on other scales
+	#each scale is extesible: if we already has some downsamples and ther increase repeats for this scale, 
+	#the old ones will remain, so we are not to rerun it.
+
+	for slide in slide_names:
+		slide_1_1_short=downsampled_name(slide,1,1)
+		slide_1_1=os.path.join(downsamples_folder,slide_1_1_short)
+		for scale in sorted(downsamples.keys()):
+			if scale==1: continue
+			random_seed_loc=random_seed+"_"+slide+"_d_"+str(scale)
+			random.seed(random_seed_loc)
+			for repl in range(downsamples[scale]):
+				sample_id_postfix="-ds"+str(scale)+"-r"+str(repl+1)
+				ofile_short_name=downsampled_name(slide,scale,repl+1)
+				ofile_name=os.path.join(downsamples_folder,ofile_short_name) # range generates 0-based
+				flag=os.path.join(flags_folder,ofile_short_name+".downsampled")
+				seed1=str(random.randint(1,1000000))
+				seed2=str(random.randint(1,1000000))
+				#index_name=ofile_name+".bam.bai"
+				print(ofile_name+".bam: "+slide_1_1+".bam")
+				command=samtools+" view -h "+slide_1_1+".bam | "+downSAM+" --downSAM.one_from_reads "+str(scale)+" --downSAM.random_seed_1 "+seed1+" --downSAM.random_seed_2 "+seed2+" --downSAM.sample_id_postfix "+sample_id_postfix+" | " +samtools+" view -Sbh - > "+ofile_name+".bam"
+				print ("\t"+command)
+	
+	#now, original files to downsample. They are just copied from slides folder and sorted
+	for slide in slide_names:
+		slide_1_1_short=downsampled_name(slide,1,1)
+		slide_1_1=os.path.join(downsamples_folder,slide_1_1_short)
+		flag=os.path.join(flags_folder,slide_1_1_short+".sorted")
+		#index_name=slide_1_1+".bam.bai"
+		origslide=os.path.join(slides_folder,slide+".bam")
+		print(slide_1_1+".bam: "+origslide)
+		command=samtools+" sort "+origslide+" "+slide_1_1
+		print ("\t"+command)
 	sys.stderr.close()
 	sys.exit(0)
 	#first, we convert all sams to bams
