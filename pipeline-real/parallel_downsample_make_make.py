@@ -26,7 +26,6 @@ slide_3_normal.bam
 5:5
 10:10
 [flow]
-cores:16
 random_seed=circumambulate
 id=test_run
 [reference]
@@ -179,7 +178,6 @@ def main():
 		if config["folders"].get("flags")!=None:
 			print("The flags option is obsoleted!",file=sys.stderr)
 
-	flags_folder=''
 	make_sure_path_exists(downsamples_folder)
 	make_sure_path_exists(bcfs_folder)
 	#folders checked
@@ -236,21 +234,11 @@ def main():
 	#flow section
 	if "flow" not in config.sections():
 		print("No flow section section in "+sys.argv[1]+" . I suppose, id=\"test_run\" and random_seed is \"circumambulate\". Is it OK?",file=sys.stderr)
-		cores=2
 		random_seed="circumambulate"
 		id="test_run"
 	else:
 		if config["flow"].get("cores") != None:
 			print("The core value is obsoleted; it will be controlled by the system that run the makefile.",file=sys.stderr)
-			cores=2
-		else:
-			try:
-				cores_string=config.get("flow","cores")
-				cores=int(cores_string)
-				cores+1 + 1 #test for int, do nothing if OK
-			except:
-				print("Cores value "+cores_string+" is not an integer. I suppose 2 cores. Is it OK?",file=sys.stderr)
-				cores=2
 		if config["flow"].get("random_seed") == None:
 			print("No random_seed value in flow section section in "+sys.argv[1]+" . I suppose it is \"circumambulate\". Is it OK?",file=sys.stderr)
 			random_seed="circumambulate"
@@ -301,7 +289,6 @@ def main():
 	print("slides folder=",slides_folder,file=sys.stderr)
 	print("bcfs folder=",bcfs_folder,file=sys.stderr)
 	print("downsamples folder=",downsamples_folder,file=sys.stderr)
-	#print("flags folder=",flags_folder,file=sys.stderr)
 	print("reference=",reference,file=sys.stderr)
 
 	# we know everything
@@ -371,7 +358,6 @@ def main():
 				sample_id_postfix="-ds"+str(scale)+"-r"+str(repl+1)
 				ofile_short_name=downsampled_name(slide,scale,repl+1)
 				ofile_name=os.path.join(downsamples_folder,ofile_short_name) # range generates 0-based
-				flag=os.path.join(flags_folder,ofile_short_name+".downsampled")
 				seed1=str(random.randint(1,1000000))
 				seed2=str(random.randint(1,1000000))
 				#index_name=ofile_name+".bam.bai"
@@ -384,7 +370,6 @@ def main():
 	for slide in slide_names:
 		slide_1_1_short=downsampled_name(slide,1,1)
 		slide_1_1=os.path.join(downsamples_folder,slide_1_1_short)
-		flag=os.path.join(flags_folder,slide_1_1_short+".sorted")
 		#index_name=slide_1_1+".bam.bai"
 		origslide=os.path.join(slides_folder,slide+".bam")
 		print(slide_1_1+".bam: "+origslide)
