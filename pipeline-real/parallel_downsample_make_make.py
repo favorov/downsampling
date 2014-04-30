@@ -166,7 +166,7 @@ def main():
 			print("Default value \".downsamples\" for the downsamples folder",file=sys.stderr)
 			downsamples_folder="./downsamples"
 		else:
-			downsamples_folder=config.get("folders","downsamples",file=sys.stderr)
+			downsamples_folder=config.get("folders","downsamples")
 			
 
 		if config["folders"].get("bcfs")==None:
@@ -378,6 +378,7 @@ def main():
 				print(ofile_name+".bam: "+slide_1_1+".bam")
 				command=samtools+" view -h "+slide_1_1+".bam | "+downSAM+" --downSAM.one_from_reads "+str(scale)+" --downSAM.random_seed_1 "+seed1+" --downSAM.random_seed_2 "+seed2+" --downSAM.sample_id_postfix "+sample_id_postfix+" | " +samtools+" view -Sbh - > "+ofile_name+".bam"
 				print ("\t"+command)
+	print()	
 	
 	#now, original files to downsample. They are just copied from slides folder and sorted
 	for slide in slide_names:
@@ -389,122 +390,15 @@ def main():
 		print(slide_1_1+".bam: "+origslide)
 		command=samtools+" sort "+origslide+" "+slide_1_1
 		print ("\t"+command)
-	sys.stderr.close()
-	sys.exit(0)
-	#first, we convert all sams to bams
-	commands=[]
+	
+	#if the original is sam, first turn it to bam
 	for i in range(0,len(if_bam)):
 		if not if_bam[i] and not os.path.isfile(os.path.join(slides_folder,slide_names[i]+".bam")):
-			commands.append("cd "+slides_folder+"; "+samtools+" view -Sbh "+slide_names[i]+".sam > "+slide_names[i]+".bam")
-	#cd slides_folder; samtools view -Sbh slide.sam > slide.bam	
-	if len(commands)>0:
-		pool.map(run_command,commands)
-	pool.close()
-	pool.join()
-	del(pool)
-	sys.stdout.flush()
-	commands[:]=[] #clean commands
-	#sams to bams converted
-	for slide in slide_names:
-	#first, we copy slide to downsamples_folder with _down_by_1_repl_1
-	#sort it and index it
-		slide_1_1_short=downsampled_name(slide,1,1)
-		slide_1_1=os.path.join(downsamples_folder,slide_1_1_short)
-		flag=os.path.join(flags_folder,slide_1_1_short+".sorted")
-		index_name=slide_1_1+".bam.bai"
-		if os.path.isfile(flag) and ((not os.path.isfile(index_name)) or os.stat(index_name).st_size==0):
-			os.unlink(flag) # if index is bad, redo
-		if not os.path.isfile(flag):
-			commands.append(samtools+" sort "+os.path.join(slides_folder,slide+".bam")+" "+slide_1_1+"; "+samtools+" index "+slide_1_1+".bam; touch "+flag)
-	pool=Pool(cores)
-	if len(commands)>0:
-		pool.map(run_command,commands) #sorting slides
-	#and run it all through our pooling system
-	#wait for rhem all to return
-	pool.close()
-	pool.join()
-	del(pool)
-	sys.stdout.flush()
-	commands[:]=[] #clean commands
-	#slides are sorted
-	#Random seeding logic:
-	#we start each downsample with a new seed (--downSAM.random_seed_1 and 2)
-	#the seed is obtained from python random
-	#python random for each downsampling scale and slide in inited with random_seed+"_"+slide_name+"_down_"+str(scale)
+			print(slide_names[i]+".bam: "+slide_names[i]+".sam")
+			command="cd "+slides_folder+"; "+samtools+" view -Sbh "+slide_names[i]+".sam > "+slide_names[i]+".bam"
+			print ("\t"+command)
 
-	#so, each scale has its own generator history.
-	#each scale is reproducible; its results does not depend on other scales
-	#each scale is extesible: if we already has some downsamples and ther increase repeats for this scale, 
-	#the old ones will remain, so we are not to rerun it.
-
-	for slide in slide_names:
-		slide_1_1_short=downsampled_name(slide,1,1)
-		slide_1_1=os.path.join(downsamples_folder,slide_1_1_short)
-		for scale in sorted(downsamples.keys()):
-			random_seed_loc=random_seed+"_"+slide+"_d_"+str(scale)
-			random.seed(random_seed_loc)
-			for repl in range(downsamples[scale]):
-				sample_id_postfix="-ds"+str(scale)+"-r"+str(repl+1)
-				ofile_short_name=downsampled_name(slide,scale,repl+1)
-				ofile_name=os.path.join(downsamples_folder,ofile_short_name) # range generates 0-based
-				flag=os.path.join(flags_folder,ofile_short_name+".downsampled")
-				seed1=str(random.randint(1,1000000))
-				seed2=str(random.randint(1,1000000))
-				index_name=ofile_name+".bam.bai"
-				if os.path.isfile(flag) and ((not os.path.isfile(index_name)) or os.stat(index_name).st_size==0):
-					os.unlink(flag) # if index is bad, redo
-				if not os.path.isfile(flag): # we do not rewrite
-					command=samtools+" view -h "+slide_1_1+".bam | "+downSAM+" --downSAM.one_from_reads "+str(scale)+" --downSAM.random_seed_1 "+seed1+" --downSAM.random_seed_2 "+seed2+" --downSAM.sample_id_postfix "+sample_id_postfix+" | " +samtools+" view -Sbh - > "+ofile_name+".bam && "+samtools+" index "+ofile_name+".bam && touch "+flag  
-					#print ("Prepare \'"+command+"\'")
-					commands.append(command)
-	pool=Pool(cores)
-	if len(commands)>0:
-		pool.map(run_command,commands)
-	#and run it all through our pooling system
-	#wait for rhem all to return
-	pool.close()
-	pool.join()
-	del(pool)
-	sys.stdout.flush()
-	commands[:]=[] #clean commands
-	#bams downsampled
-	#and now, bcfs.....
-	downsamples[1]=1 # to call original in standard framework
-	for scale in sorted(downsamples.keys()):
-		for repl in range(downsamples[scale]):
-			bamliststring=" "
-			shortfilename=downsampled_name(id,scale,repl+1)
-			bcffilename=os.path.join(bcfs_folder,shortfilename+".bcf")
-			flag=os.path.join(flags_folder,shortfilename+".called")
-
-			if not os.path.isfile(flag): # we do not rewrite
-				for slide in slide_names:
-					bampath=os.path.join(downsamples_folder,downsampled_name(slide,scale,repl+1)+".bam")
-					bamliststring=bamliststring+bampath+" "
-				command=samtools+" mpileup -uf "+reference+bamliststring+" | "+bcftools+" view -bcvg - > "+bcffilename+" && touch "+flag
-				commands.append(command)
-	pool=Pool(cores)
-	if len(commands)>0:
-		pool.map(run_command,commands)
-	#and run it all through our pooling system
-	#wait for rhem all to return
-	pool.close()
-	pool.join()
-	del(pool)
-	sys.stdout.flush()
-	commands[:]=[] #clean commands
-	#and run it all through our pooling system
-	#wait for rhem all to return
-	#let's make a list of command for bcf
-	#and pool them
-	#and wait
-	#see you!
-	#and run it all through our pooling system
-	#wait for rhem all to return
-	#let's make a list of command for bcf
-	#and pool them
-	#and wait
-
+	sys.stderr.close()
 	sys.exit(0)
 
 
