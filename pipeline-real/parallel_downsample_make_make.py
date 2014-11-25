@@ -8,8 +8,8 @@ import errno
 import configparser
 import shutil
 import random
+import random
 import subprocess
-from multiprocessing import Pool
 
 really_execute=True
 
@@ -400,7 +400,7 @@ def main():
 				seed2=str(random.randint(1,1000000))
 				#index_name=ofile_name+".bam.bai"
 				print(ofile_name+".bam: "+slide_1_1+".bam")
-				command=samtools+" view -h "+slide_1_1+".bam | "+downSAM+" --downSAM.one_from_reads "+str(scale)+"--downSAM.chances_multiplier"+str(mult)+" --downSAM.random_seed_1 "+seed1+" --downSAM.random_seed_2 "+seed2+" --downSAM.sample_id_postfix "+sample_id_postfix+" | " +samtools+" view -Sbh - > "+ofile_name+".bam"
+				command=samtools+" view -h "+slide_1_1+".bam | "+downSAM+" --downSAM.one_from_reads "+str(scale)+" --downSAM.chances_multiplier "+str(mult)+" --downSAM.random_seed_1 "+seed1+" --downSAM.random_seed_2 "+seed2+" --downSAM.sample_id_postfix "+sample_id_postfix+" | " +samtools+" view -Sbh - > "+ofile_name+".bam"
 				print ("\t"+command)
 	print()	
 	
