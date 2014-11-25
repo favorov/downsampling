@@ -23,6 +23,7 @@ slide_3_normal.bam
 [downsampling]
 #dowsampling schedule each line is level(1 out for level in):runs
 2:2
+5/2:5
 5:5
 10:10
 [flow]
@@ -104,8 +105,11 @@ the configuration file name
 	print(help_message)
 	return
 
-def downsampled_name(name,scale,repl):
-	output_file_name="{}_down_by_{}_repl_{}".format(name,scale,repl)
+def downsampled_name(name,scale,repl,mult_chance=1):
+	if mult_chance==1
+		output_file_name="{}_down_by_{}_repl_{}".format(name,scale,repl)
+	else
+		output_file_name="{}_down_by_{}_mult_{}_repl_{}".format(name,scale,mult_chance,repl)
 	return output_file_name
 
 def main():
@@ -115,8 +119,10 @@ def main():
 	#all downsamples are bams, whatever
 	slide_names=[]
 	#names of slides without extension
-	downsamples={}
-	#dictionary scale:repeats; both are integers
+	downsample_scales=[]
+	downsample_chances_mult=[]
+	downsample_repeats=[]
+	#scales, multipliers and repeats fro each schedule line	
 	#folders
 
 	if len(sys.argv)<2:
@@ -214,21 +220,40 @@ def main():
 		print("no downsampling section section in "+sys.argv[1]+" .",file=sys.stderr)
 		sys.exit(1)
 
-	for scale in config.options("downsampling"):
+	for scale_ratio in config.options("downsampling"):
+		scale_and_mult=scale_ratio.split("/")
+		
 		try:
-			scale_int=int(scale)
+			scale_int=int(scale_and_mult[0])
 			scale_int + 1 #test for int, do nothing if OK
 		except:
-			print("Downsampling scale "+scale+" is not an integer.\n",file=sys.stderr)
+			print("Downsampling scale "+scale_and_mult[0]+" is not an integer.\n",file=sys.stderr)
 			sys.exit(1)
+		
+		if len(scale_and_mult)==1
+			mult_int=1
+		elif len(scale_and_mult)==2
+			try:
+				mult_int=int(scale_and_mult[1])
+				mult_int + 1 #test for int, do nothing if OK
+			except:
+				print("Sampling chance multiplier "+scale_and_mult[1]+" is not an integer.\n",file=sys.stderr)
+				sys.exit(1)
+		elif len(scale_and_mult)>2
+			print("sampling scale "+scale_ratio+" is nor an integer niether a natural ratio.\n",file=sys.stderr)
+			sys.exit(1)
+		
 		repeats=config["downsampling"][scale]
 		try:
 			repeats=int(repeats)
 			repeats + 1 #test for int, do nothing if OK
 		except:
-			print("Downsampling repeats at scale "+scale+" is "+repeats+" and it is not an integer.\n",file=sys.stderr)
+			print("Downsampling repeats at scale "+scale_ratio+" is "+repeats+" and it is not an integer.\n",file=sys.stderr)
 			sys.exit(1)
-		downsamples[scale_int]=repeats
+
+		downsample_scales.append(scale_int)
+		downsample_chances_mult.append(mult_int)
+		downsample_repeats.append(repeats)
 				
 
 	#flow section
@@ -281,7 +306,7 @@ def main():
 
 	print("id=",id,file=sys.stderr)
 	print("slide names=",slide_names,file=sys.stderr)
-	print("downsamplin shedule=",downsamples,file=sys.stderr)
+	print("downsampling shedule=",downsamples,file=sys.stderr)
 	print("downSAM=",downSAM,file=sys.stderr)
 	print("samtools=",samtools,file=sys.stderr)
 	print("bcftools=",bcftools,file=sys.stderr)
@@ -302,7 +327,9 @@ def main():
 
 	print(".PHONY: all")
 	
-	downsamples[1]=1 # to mention original in standard framework
+	downsample_scales.insert(0,1) # to mention original in standard framework
+	downsample_chances_mult.insert(0,1) 
+	downsample_repeats.insert(0,1)
 
 	#now, we list all the bcfs as all
 	
