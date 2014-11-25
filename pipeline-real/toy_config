@@ -6,10 +6,10 @@
 [downsampling]
 #dowsampling schedule each line is level(1 out for level in):runs
 2:2
+5/2:5
 5:5
 10:10
 [flow]
-cores:2
 random_seed=circumambulate
 id=toy_example
 [reference]
