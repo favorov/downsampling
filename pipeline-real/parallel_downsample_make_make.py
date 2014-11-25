@@ -374,7 +374,7 @@ def main():
 	#Random seeding logic:
 	#we start each downsample with a new seed (--downSAM.random_seed_1 and 2)
 	#the seed is obtained from python random
-	#python random for each downsampling scale and slide in inited with random_seed+"_"+slide_name+"_down_"+str(scale)
+	#python random for each downsampling scale and slide in inited with random_seed+"_"+slide_name+"_d_"+str(scale)+"_m_"+str(multiplier)
 
 	#so, each scale has its own generator history.
 	#each scale is reproducible; its results does not depend on other scales
@@ -386,19 +386,21 @@ def main():
 		slide_1_1=os.path.join(downsamples_folder,slide_1_1_short)
 
 		for scale_no in range(len(downsample_scales)):
-			if downsample_scales[scale_no]==1: continue
-			random_seed_loc=random_seed+"_"+slide+"_d_"+str(downsample_scales[scale_no])+"_m_"+str(downsample_chances_mult[scale_no])
+			scale=downsample_scales[scale_no]
+			mult=downsample_chances_mult[scale_no]
+			if scale==1: continue
+			random_seed_loc=random_seed+"_"+slide+"_d_"+str(scale)+"_m_"+str(mult)
 			random.seed(random_seed_loc)
-			#HERE
 			for repl in range(downsample_repeats[scale_no]):
-				sample_id_postfix="-ds"+str(scale)+"-r"+str(repl+1)
-				ofile_short_name=downsampled_name(slide,scale,repl+1)
+				if mult==1:
+					sample_id_postfix="-ds="+str(scale)+"/"+str(mult)+"-r="+str(repl+1)
+				ofile_short_name=downsampled_name(slide,scale,repl+1,mult)
 				ofile_name=os.path.join(downsamples_folder,ofile_short_name) # range generates 0-based
 				seed1=str(random.randint(1,1000000))
 				seed2=str(random.randint(1,1000000))
 				#index_name=ofile_name+".bam.bai"
 				print(ofile_name+".bam: "+slide_1_1+".bam")
-				command=samtools+" view -h "+slide_1_1+".bam | "+downSAM+" --downSAM.one_from_reads "+str(scale)+" --downSAM.random_seed_1 "+seed1+" --downSAM.random_seed_2 "+seed2+" --downSAM.sample_id_postfix "+sample_id_postfix+" | " +samtools+" view -Sbh - > "+ofile_name+".bam"
+				command=samtools+" view -h "+slide_1_1+".bam | "+downSAM+" --downSAM.one_from_reads "+str(scale)+"--downSAM.chances_multiplier"+str(mult)+" --downSAM.random_seed_1 "+seed1+" --downSAM.random_seed_2 "+seed2+" --downSAM.sample_id_postfix "+sample_id_postfix+" | " +samtools+" view -Sbh - > "+ofile_name+".bam"
 				print ("\t"+command)
 	print()	
 	
