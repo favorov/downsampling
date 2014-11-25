@@ -28,6 +28,7 @@ using namespace std;
 int main(int argc, char ** argv)
 {
 	unsigned int one_from_reads;
+	unsigned int chances_multiplier;
 	unsigned int min_read_length;
 	unsigned int random_seed_1;
 	unsigned int random_seed_2;
@@ -39,6 +40,7 @@ int main(int argc, char ** argv)
 			("help", "help")
 			("config-file", boost::program_options::value<string>(), "configuration file name")
 			("downSAM.one_from_reads", boost::program_options::value<unsigned int>(&one_from_reads)->default_value(1), "how much input reads are expected per one output")
+			("downSAM.chances_multiplier", boost::program_options::value<unsigned int>(&chances_multiplier)->default_value(1), "multiplies chances for a read do be sampled")
 			("downSAM.min_read_length", boost::program_options::value<unsigned int>(&min_read_length)->default_value(30), "minimal length of read, to detect reads by [ATGCatgc]{min_read_length} regex")
 			("downSAM.random_seed_1", boost::program_options::value<unsigned int>(&random_seed_1)->default_value(DSEED_1), "random seed 1 for noiser")
 			("downSAM.random_seed_2", boost::program_options::value<unsigned int>(&random_seed_2)->default_value(DSEED_2), "random seed 2 for noiser")
@@ -172,10 +174,10 @@ int main(int argc, char ** argv)
 				HEAD_over=true; //it is a read, goodbye, header
 				if (!PG_written)
 				{
-					cout<<"@PG\tID:downSAM\tVN:1.0.1\tCL:\"downSAM --downSAM.one_from_reads "<<one_from_reads<<" --downSAM.min_read_length "<<min_read_length<<"\""<<endl; //wrote our @PG signature
+					cout<<"@PG\tID:downSAM\tVN:1.0.1\tCL:\"downSAM --downSAM.one_from_reads "<<one_from_reads<<" --downSAM.chances_multiplier"<<chances_multiplier<<" --downSAM.min_read_length "<<min_read_length<<"\""<<endl; //wrote our @PG signature
 					PG_written=true; //  actually, we do need it
 				}
-				if (! to_write_or_not_to_write(gen))
+				if (to_write_or_not_to_write(gen)<chances_multiplier)
 					cout<<current_string<<endl;
 				continue;
 			}
@@ -183,7 +185,7 @@ int main(int argc, char ** argv)
 			cout<<current_string<<endl; //it is a header string, no idea what
 		}
 		else // header is over; we think that every line is a read
-			if (! to_write_or_not_to_write(gen))
+			if (to_write_or_not_to_write(gen)<chances_multiplier)
 				cout<<current_string<<endl;
 	}
 
