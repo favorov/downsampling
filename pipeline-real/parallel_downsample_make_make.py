@@ -106,9 +106,9 @@ the configuration file name
 	return
 
 def downsampled_name(name,scale,repl,mult_chance=1):
-	if mult_chance==1
+	if mult_chance==1:
 		output_file_name="{}_down_by_{}_repl_{}".format(name,scale,repl)
-	else
+	else:
 		output_file_name="{}_down_by_{}_mult_{}_repl_{}".format(name,scale,mult_chance,repl)
 	return output_file_name
 
@@ -122,6 +122,8 @@ def main():
 	downsample_scales=[]
 	downsample_chances_mult=[]
 	downsample_repeats=[]
+	#downsampling_string is for report		
+	downsampling_string=""
 	#scales, multipliers and repeats fro each schedule line	
 	#folders
 
@@ -230,20 +232,20 @@ def main():
 			print("Downsampling scale "+scale_and_mult[0]+" is not an integer.\n",file=sys.stderr)
 			sys.exit(1)
 		
-		if len(scale_and_mult)==1
+		if len(scale_and_mult)==1:
 			mult_int=1
-		elif len(scale_and_mult)==2
+		elif len(scale_and_mult)==2:
 			try:
 				mult_int=int(scale_and_mult[1])
 				mult_int + 1 #test for int, do nothing if OK
 			except:
 				print("Sampling chance multiplier "+scale_and_mult[1]+" is not an integer.\n",file=sys.stderr)
 				sys.exit(1)
-		elif len(scale_and_mult)>2
+		elif len(scale_and_mult)>2:
 			print("sampling scale "+scale_ratio+" is nor an integer niether a natural ratio.\n",file=sys.stderr)
 			sys.exit(1)
 		
-		repeats=config["downsampling"][scale]
+		repeats=config["downsampling"][scale_ratio]
 		try:
 			repeats=int(repeats)
 			repeats + 1 #test for int, do nothing if OK
@@ -254,7 +256,12 @@ def main():
 		downsample_scales.append(scale_int)
 		downsample_chances_mult.append(mult_int)
 		downsample_repeats.append(repeats)
-				
+		downsample_string=str(scale_int)
+		if mult_int>1:
+			downsample_string=downsample_string+"/"+str(mult_int)
+		downsample_string=downsample_string+":"+str(repeats)+" "
+
+		#downsampling_string is for report		
 
 	#flow section
 	if "flow" not in config.sections():
@@ -306,7 +313,7 @@ def main():
 
 	print("id=",id,file=sys.stderr)
 	print("slide names=",slide_names,file=sys.stderr)
-	print("downsampling shedule=",downsamples,file=sys.stderr)
+	print("downsampling shedule=",downsampling_string,file=sys.stderr)
 	print("downSAM=",downSAM,file=sys.stderr)
 	print("samtools=",samtools,file=sys.stderr)
 	print("bcftools=",bcftools,file=sys.stderr)
@@ -334,9 +341,9 @@ def main():
 	#now, we list all the bcfs as all
 	
 	bcfs=[]
-	for scale in sorted(downsamples.keys()):
-		for repl in range(downsamples[scale]):
-			shortfilename=downsampled_name(id,scale,repl+1)
+	for scale_no in range(len(downsample_scales)):
+		for repl in range(downsample_repeats[scale_no]):
+			shortfilename=downsampled_name(id,downsample_scales[scale_no],repl+1,downsample_chances_mult[scale_no])
 			bcffilename=os.path.join(bcfs_folder,shortfilename+".bcf")
 			bcfs.append('\t'+bcffilename+' ')
 	print("all: \\")
@@ -348,13 +355,13 @@ def main():
 	#each of the bcfs is generated from the list of downasamples
 	#with the same id and ratio, but from differend slides
 	print("#bcfs need downsamples")
-	for scale in sorted(downsamples.keys()):
-		for repl in range(downsamples[scale]):
+	for scale_no in range(len(downsample_scales)):
+		for repl in range(downsample_repeats[scale_no]):
 			bamliststring=" "
-			shortfilename=downsampled_name(id,scale,repl+1)
+			shortfilename=downsampled_name(id,downsample_scales[scale_no],repl+1,downsample_chances_mult[scale_no])
 			bcffilename=os.path.join(bcfs_folder,shortfilename+".bcf")
 			for slide in slide_names:
-				bampath=os.path.join(downsamples_folder,downsampled_name(slide,scale,repl+1)+".bam")
+				bampath=os.path.join(downsamples_folder,downsampled_name(slide,downsample_scales[scale_no],repl+1,downsample_chances_mult[scale_no])+".bam")
 				bamliststring=bamliststring+bampath+" "
 			command=samtools+" mpileup -uf "+reference+bamliststring+" | "+bcftools+" view -bcvg - > "+bcffilename
 			print(bcffilename+": "+bamliststring)
@@ -377,11 +384,13 @@ def main():
 	for slide in slide_names:
 		slide_1_1_short=downsampled_name(slide,1,1)
 		slide_1_1=os.path.join(downsamples_folder,slide_1_1_short)
-		for scale in sorted(downsamples.keys()):
-			if scale==1: continue
-			random_seed_loc=random_seed+"_"+slide+"_d_"+str(scale)
+
+		for scale_no in range(len(downsample_scales)):
+			if downsample_scales[scale_no]==1: continue
+			random_seed_loc=random_seed+"_"+slide+"_d_"+str(downsample_scales[scale_no])+"_m_"+str(downsample_chances_mult[scale_no])
 			random.seed(random_seed_loc)
-			for repl in range(downsamples[scale]):
+			#HERE
+			for repl in range(downsample_repeats[scale_no]):
 				sample_id_postfix="-ds"+str(scale)+"-r"+str(repl+1)
 				ofile_short_name=downsampled_name(slide,scale,repl+1)
 				ofile_name=os.path.join(downsamples_folder,ofile_short_name) # range generates 0-based
