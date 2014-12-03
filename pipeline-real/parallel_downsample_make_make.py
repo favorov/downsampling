@@ -122,8 +122,8 @@ def main():
 	downsample_scales=[]
 	downsample_chances_mult=[]
 	downsample_repeats=[]
-	#downsampling_string is for report		
-	downsampling_string=""
+	#downsample_string is for report		
+	downsample_string=""
 	#scales, multipliers and repeats fro each schedule line	
 	#folders
 
@@ -256,12 +256,12 @@ def main():
 		downsample_scales.append(scale_int)
 		downsample_chances_mult.append(mult_int)
 		downsample_repeats.append(repeats)
-		downsample_string=str(scale_int)
+		downsample_string=downsample_string+str(scale_int)
 		if mult_int>1:
 			downsample_string=downsample_string+"/"+str(mult_int)
 		downsample_string=downsample_string+":"+str(repeats)+" "
 
-		#downsampling_string is for report		
+		#downsample_string is for report		
 
 	#flow section
 	if "flow" not in config.sections():
@@ -313,7 +313,7 @@ def main():
 
 	print("id=",id,file=sys.stderr)
 	print("slide names=",slide_names,file=sys.stderr)
-	print("downsampling shedule=",downsampling_string,file=sys.stderr)
+	print("downsampling schedule=",downsample_string,file=sys.stderr)
 	print("downSAM=",downSAM,file=sys.stderr)
 	print("samtools=",samtools,file=sys.stderr)
 	print("bcftools=",bcftools,file=sys.stderr)
@@ -393,6 +393,8 @@ def main():
 			random.seed(random_seed_loc)
 			for repl in range(downsample_repeats[scale_no]):
 				if mult==1:
+					sample_id_postfix="-ds="+str(scale)+"-r="+str(repl+1)
+				else:
 					sample_id_postfix="-ds="+str(scale)+"/"+str(mult)+"-r="+str(repl+1)
 				ofile_short_name=downsampled_name(slide,scale,repl+1,mult)
 				ofile_name=os.path.join(downsamples_folder,ofile_short_name) # range generates 0-based
