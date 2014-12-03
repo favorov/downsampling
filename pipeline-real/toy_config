@@ -5,6 +5,7 @@
 192_toy_Slide3.bam
 [downsampling]
 #dowsampling schedule each line is level(1 out for level in):runs
+3/4:3
 2:2
 5/2:5
 5:5
