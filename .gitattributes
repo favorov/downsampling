@@ -1,8 +1,10 @@
 *.pl ident
-*. ident
+Makefile ident
+README* ident
 *.txt ident
 *.c ident
 *.cpp ident
 *.h ident
 *.hpp ident
 *.mak ident
+*.sh ident
