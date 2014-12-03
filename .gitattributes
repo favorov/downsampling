@@ -1,0 +1,8 @@
+*.pl ident
+*. ident
+*.txt ident
+*.c ident
+*.cpp ident
+*.h ident
+*.hpp ident
+*.mak ident
